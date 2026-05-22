@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+artifacts/
+cache/
+typechain-types/
+coverage/
+.env
+.env.local
+*.log
+*.tgz
+.DS_Store
+Thumbs.db

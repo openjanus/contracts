@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Build + Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type check
+        run: npm run typecheck --workspaces --if-present
+
+      - name: Build
+        run: npm run build --workspaces --if-present
+
+      - name: Test (Hardhat)
+        run: npm run test:hardhat --workspaces --if-present
+
+      - name: Test (SDK / vitest)
+        run: npm run test:sdk --workspaces --if-present
