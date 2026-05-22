@@ -1,0 +1,45 @@
+{
+  "name": "@openjanus/janus-token",
+  "version": "0.1.0",
+  "description": "JanusToken — ERC-7984 confidential token with Pedersen commitments + Groth16 ZK proofs, cross-VM on Flow",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "compile": "hardhat compile",
+    "test:hardhat": "hardhat test",
+    "test:sdk": "vitest run tests/sdk",
+    "test": "npm run test:hardhat && npm run test:sdk",
+    "deploy:testnet": "hardhat run scripts/deploy-evm.ts --network flow-evm-testnet"
+  },
+  "dependencies": {
+    "@openjanus/babyjub": "github:openjanus/primitives#main",
+    "@openjanus/pedersen": "github:openjanus/primitives#main",
+    "@openjanus/groth16": "github:openjanus/primitives#main",
+    "ethers": "^6.13.4",
+    "@onflow/fcl": "^1.13.0",
+    "circomlibjs": "^0.1.7",
+    "snarkjs": "^0.7.6"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0",
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.0.0",
+    "vitest": "^1.6.0",
+    "chai": "^4.4.1"
+  },
+  "files": [
+    "dist/",
+    "contracts/",
+    "deployments/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openjanus/contracts.git",
+    "directory": "packages/janus-token"
+  },
+  "license": "MIT"
+}

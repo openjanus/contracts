@@ -1,0 +1,18 @@
+{
+  "_comment": "Deployed to Flow EVM testnet (chainId 545) via openjanus COA",
+  "network": "testnet",
+  "chainId": 545,
+  "primitives": {
+    "BabyJub": "0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07",
+    "Groth16Verifier": "0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5",
+    "PedersenBabyJub_cdc": "0x28fef3d1d6a12800"
+  },
+  "JanusToken": {
+    "evm": null,
+    "evmDeployTx": null,
+    "cadence": "0x28fef3d1d6a12800",
+    "cadenceContractName": "JanusToken",
+    "deployedAt": null,
+    "deployer": "0x0000000000000000000000027eb18dc34b9966fd"
+  }
+}
