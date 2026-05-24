@@ -14,22 +14,22 @@
     "deploy:testnet": "hardhat run scripts/deploy-evm.ts --network flow-evm-testnet"
   },
   "dependencies": {
-    "@openjanus/babyjub": "github:openjanus/primitives#main",
-    "@openjanus/pedersen": "github:openjanus/primitives#main",
-    "@openjanus/groth16": "github:openjanus/primitives#main",
-    "ethers": "^6.13.4",
     "@onflow/fcl": "^1.13.0",
+    "@openjanus/babyjub": "github:openjanus/primitives#main",
+    "@openjanus/groth16": "github:openjanus/primitives#main",
+    "@openjanus/pedersen": "github:openjanus/primitives#main",
     "circomlibjs": "^0.1.7",
+    "ethers": "^6.13.4",
     "snarkjs": "^0.7.6"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.0",
-    "typescript": "^5.4.0",
+    "@types/node": "^20.19.41",
+    "chai": "^4.5.0",
+    "hardhat": "^2.28.6",
     "ts-node": "^10.9.2",
-    "@types/node": "^20.0.0",
-    "vitest": "^1.6.0",
-    "chai": "^4.4.1"
+    "typescript": "^5.9.3",
+    "vitest": "^1.6.1"
   },
   "files": [
     "dist/",
