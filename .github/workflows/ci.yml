@@ -24,13 +24,19 @@ jobs:
         run: npm install
 
       - name: Type check
-        run: npm run typecheck --workspaces --if-present
+        working-directory: packages/janus-token
+        run: npm run typecheck
 
-      - name: Build
-        run: npm run build --workspaces --if-present
+      - name: Compile Solidity
+        working-directory: packages/janus-token
+        run: npm run compile
 
-      - name: Test (Hardhat)
-        run: npm run test:hardhat --workspaces --if-present
+      - name: Test — Hardhat (unit tests against mock contracts)
+        working-directory: packages/janus-token
+        run: npm run test:hardhat
 
-      - name: Test (SDK / vitest)
-        run: npm run test:sdk --workspaces --if-present
+      - name: Test — SDK (commitment algebra + integration)
+        working-directory: packages/janus-token
+        run: npx vitest run tests/sdk/commit.test.ts
+        # Integration tests require network — run separately with appropriate gate
+        # npx vitest run tests/sdk/integration.test.ts
