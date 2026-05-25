@@ -26,16 +26,18 @@ JanusToken is a **fully private token** where no balance is ever revealed on-cha
 
 ---
 
-## Quick start
+## TypeScript SDK
+
+The TypeScript SDK has been consolidated into [`@openjanus/sdk`](https://github.com/openjanus/sdk).
 
 ```bash
-npm install github:openjanus/contracts#main
+npm install @openjanus/sdk
 ```
 
 ```typescript
-import { JanusToken } from "@openjanus/janus-token";
+import { JanusToken, JANUS_TOKEN_TESTNET } from "@openjanus/sdk";
 
-const token = new JanusToken({ network: "testnet" });
+const token = new JanusToken(JANUS_TOKEN_TESTNET);
 await token.connect();
 
 // Read balance commitment (no amount revealed)
