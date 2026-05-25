@@ -1,0 +1,13 @@
+{
+  "network": "flow-testnet",
+  "deployed_at": "2026-05-25T16:52:32.911Z",
+  "contract": "JanusFlowV2",
+  "cadence_address": "0x28fef3d1d6a12800",
+  "deploy_tx": "6f5f551f6e7af4def5cd9d7d5098b4c13daff9eaaaf0598c10feddbac0b0e7b5",
+  "status": "SEALED",
+  "evm_dependency": {
+    "JanusTokenV2": "0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D",
+    "BabyJub": "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
+  },
+  "import_pattern": "import JanusFlowV2 from 0x28fef3d1d6a12800"
+}
