@@ -1,0 +1,23 @@
+{
+  "name": "@openjanus/janus-token-v2",
+  "version": "2.0.0",
+  "description": "JanusToken v2 — ElGamal accumulator-based confidential token with ZK-gated wrap/unwrap and pubkey rotation. Phase 3 of the openjanus privacy stack.",
+  "type": "module",
+  "scripts": {
+    "compile": "hardhat compile --config hardhat.config.cjs",
+    "deploy:evm": "node --experimental-vm-modules scripts/deploy_evm.mjs",
+    "deploy:cadence": "node --experimental-vm-modules scripts/deploy_cadence.mjs",
+    "test:e2e": "node --experimental-vm-modules tests/e2e_multiuser.mjs"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0",
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  },
+  "dependencies": {
+    "circomlibjs": "^0.1.7",
+    "snarkjs": "^0.7.6",
+    "ethers": "^6.13.4"
+  }
+}
