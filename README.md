@@ -22,8 +22,8 @@ TIER 3  apps                   — PrivateTip, LetheOrderbook, AuroraReveal, etc
 
 | Package | Description | Status |
 |---------|-------------|--------|
-| [`@openjanus/janus-token`](./packages/janus-token) | ERC-7984 confidential token (Pedersen + Groth16) | **v0.1.0** |
-| [`@openjanus/janus-token-v2`](./packages/janus-token-v2) | ElGamal accumulator confidential token with ZK-gated wrap/unwrap and pubkey rotation | **v2.0.0** |
+| [`@openjanus/janus-token-v2`](./packages/janus-token-v2) | ElGamal accumulator confidential token with ZK-gated wrap/unwrap and pubkey rotation | **v2.0.0** — Current |
+| [`@openjanus/janus-token`](./_archive/janus-token-v1/) (archived) | ERC-7984 confidential token (Pedersen + Groth16) | **Deprecated** — see [_archive/janus-token-v1/DEPRECATED.md](./_archive/janus-token-v1/DEPRECATED.md) |
 
 ---
 
@@ -33,8 +33,8 @@ Every contract in this repo takes the name of a Roman deity associated with **do
 
 | Name | Deity / Association | Contract | Status |
 |------|---------------------|----------|--------|
-| **Janus** | Dual-faced god of beginnings and thresholds | `JanusToken` — cross-VM confidential token (v1 Pedersen) | **v0.1.0** |
-| **Janus** | Dual-faced god of beginnings and thresholds | `JanusTokenV2` — ElGamal accumulator + ZK proofs | **v2.0.0** |
+| **Janus** | Dual-faced god of beginnings and thresholds | `JanusTokenV2` — ElGamal accumulator + ZK proofs | **v2.0.0** — Current |
+| ~~Janus~~ | ~~Dual-faced god of beginnings and thresholds~~ | ~~`JanusToken` — cross-VM confidential token (v1 Pedersen)~~ | **Deprecated** — archived |
 | Cardea | Goddess of door hinges | `CardeaVault` — time-locked vault | future |
 | Portunus | God of keys and ports | `PortunusKey` — multisig key manager | future |
 | Limen | God of thresholds | `LimenBridge` — cross-VM router | future |
@@ -53,26 +53,31 @@ Package names use lowercase + hyphen: `@openjanus/janus-token`, `@openjanus/card
 
 ---
 
-## Quick start — JanusToken
+## Quick start — JanusTokenV2
 
 ```bash
 npm install github:openjanus/contracts#main
 ```
 
 ```typescript
-import { JanusToken } from "@openjanus/janus-token";
+import { JanusTokenV2, JANUS_TOKEN_V2_TESTNET } from "@openjanus/janus-token-v2";
 
-const token = new JanusToken({ network: "testnet" });
+const token = new JanusTokenV2(JANUS_TOKEN_V2_TESTNET);
 await token.connect();
 
-const commit = await token.balanceOfCommitment("0xYourAddress");
+const ciphertext = await token.getBalanceCiphertext("0xYourAddress");
+const hasPk = await token.hasPubkey("0xYourAddress");
 ```
 
-See [packages/janus-token/README.md](./packages/janus-token/README.md) for the full API.
+See [packages/janus-token-v2/README.md](./packages/janus-token-v2/README.md) for the full API.
+
+> **v1 users:** See [packages/_archive/janus-token-v1/DEPRECATED.md](./_archive/janus-token-v1/DEPRECATED.md) for migration guidance and the reason for deprecation.
 
 ---
 
-## Deployed primitives (do not redeploy)
+## Deployed contracts (testnet)
+
+### Primitive contracts (canonical — used by all versions)
 
 | Contract | Network | Address |
 |----------|---------|---------|
@@ -80,6 +85,22 @@ See [packages/janus-token/README.md](./packages/janus-token/README.md) for the f
 | Groth16 Verifier | Flow EVM testnet | `0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5` |
 | PedersenBabyJub.cdc | Flow testnet (Cadence) | `0x28fef3d1d6a12800` |
 | openjanus COA | Flow EVM testnet | `0x0000000000000000000000027eb18dc34b9966fd` |
+
+### v2 token contracts (current — RECOMMENDED)
+
+| Contract | Network | Address |
+|----------|---------|---------|
+| JanusTokenV2.sol | Flow EVM testnet | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
+| JanusFlowV2.cdc | Flow Cadence testnet | `0x28fef3d1d6a12800` (contract: `JanusFlowV2`) |
+| EncryptConsistencyVerifier | Flow EVM testnet | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
+| DecryptOpenVerifier | Flow EVM testnet | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
+
+### v1 contracts (historical — DEPRECATED, do not use for new development)
+
+| Contract | Network | Address | Status |
+|----------|---------|---------|--------|
+| JanusToken.sol | Flow EVM testnet | `0x53F49881A1132FF4F674D2c015e35D5B07Fa1F4A` | DEPRECATED |
+| JanusFlow.cdc (v1.1.0) | Flow Cadence testnet | `0x28fef3d1d6a12800` (contract: `JanusFlow`) | DEPRECATED |
 
 ---
 

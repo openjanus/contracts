@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [0.2.0] — 2026-05-25
+
+### Changed (Breaking)
+
+- **v1 stack archived.** `packages/janus-token/` moved to `packages/_archive/janus-token-v1/`.
+  - Reason: Pedersen-hash limitation caused per-sender amount leakage to recipients in
+    multi-sender scenarios. Cadence `TokensWithdrawn` events emit plaintext FLOW amounts,
+    and the commitment structure is not additively homomorphic, requiring recipients to know
+    each individual sender's `(amount, blinding)` pair.
+  - v1 contracts remain deployed on Flow EVM testnet for historical reference.
+  - Replacement: `packages/janus-token-v2/` (ElGamal-on-BabyJub, IND-CPA under DDH).
+  - Migration: see `packages/_archive/janus-token-v1/DEPRECATED.md`.
+  - Historical access: `git checkout v0.1.0-final`.
+
+### Added
+
+- `packages/_archive/` directory for deprecated contract packages
+- `packages/_archive/README.md` — archive policy documentation
+- `packages/_archive/janus-token-v1/DEPRECATED.md` — full deprecation notice with addresses
+- v2 stack as the canonical token implementation
+
+---
+
 ## [2.0.0] — 2026-05-25
 
 ### Added

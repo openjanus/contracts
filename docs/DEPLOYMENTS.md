@@ -1,14 +1,28 @@
 # Deployments
 
-## JanusToken — Flow EVM testnet (chainId 545)
-
-> This is a DEMO/TEST instance in NATIVE mode.
-> Apps should deploy their own JanusToken instances using `examples/deploy-wrapper.ts`.
+## JanusTokenV2 — Flow EVM testnet (chainId 545) — CURRENT
 
 | Component | Address | Notes |
 |-----------|---------|-------|
-| `JanusToken.sol` (EVM) | `0x53F49881A1132FF4F674D2c015e35D5B07Fa1F4A` | NATIVE mode (no underlying) |
-| `JanusToken.cdc` (Cadence) | `0x28fef3d1d6a12800` | contract name: `JanusToken` |
+| `JanusTokenV2.sol` (EVM) | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | ElGamal accumulator (v2) |
+| `JanusFlowV2.cdc` (Cadence) | `0x28fef3d1d6a12800` | contract name: `JanusFlowV2` |
+| `EncryptConsistencyVerifier` | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` | v2 ZK verifier |
+| `DecryptOpenVerifier` | `0x3bB139B5404fD6b152813bC3532367AAa096638b` | v2 ZK verifier |
+
+See `packages/janus-token-v2/deployments/` for full deploy TX hashes.
+
+---
+
+## JanusToken (v1) — DEPRECATED — historical reference only
+
+> **DEPRECATED as of v0.2.0.** These contracts remain deployed on-chain as an immutable
+> historical record. Do not use for new development.
+> See `packages/_archive/janus-token-v1/DEPRECATED.md` for the reason for deprecation.
+
+| Component | Address | Notes |
+|-----------|---------|-------|
+| `JanusToken.sol` (EVM) | `0x53F49881A1132FF4F674D2c015e35D5B07Fa1F4A` | NATIVE mode (no underlying) — DEPRECATED |
+| `JanusToken.cdc` (Cadence) | `0x28fef3d1d6a12800` | contract name: `JanusToken` — DEPRECATED |
 
 ### Deploy transactions
 
