@@ -24,6 +24,37 @@
 
 ---
 
+## JanusFlow — Cadence FLOW wrapper (testnet)
+
+> JanusFlow wraps Cadence FLOW tokens into confidential Pedersen commitments.
+> Wrap mechanism: **Option Y (Cadence-native)** — FlowToken.Vault custody.
+
+| Component | Address | Notes |
+|-----------|---------|-------|
+| `JanusFlow.cdc` (Cadence) | `0x28fef3d1d6a12800` | contract name: `JanusFlow` |
+
+### JanusFlow deploy transactions
+
+| What | Transaction |
+|------|------------|
+| JanusFlow.cdc initial deploy | `5c05cb4543ca067613bdf6a37db030088f77b5e253b322d1c4b4cbd717eaff7b` |
+| JanusFlow.cdc update (v1.0) | `ccff0e143d20a4a4963a1faab17120654866cabe73f8cee3d3b771b0756d4628` |
+
+### JanusFlow write test results (2026-05-24)
+
+| Test | TX Hash | Result |
+|------|---------|--------|
+| Wrap 10 FLOW | `5403f9f7fb8f0f9c1ded060ebce7b33685e8b1c4c39a441571947f572f208cbd` | SEALED ✓ |
+| Unwrap 10 FLOW | `d47ac8c8dfcb33d8481be0ca4c6d6221c7efc065ac3031731758d8bc508486eb` | SEALED ✓ |
+
+### Flowscan links
+
+- [JanusFlow deploy](https://testnet.flowscan.io/transaction/5c05cb4543ca067613bdf6a37db030088f77b5e253b322d1c4b4cbd717eaff7b)
+- [Wrap TX](https://testnet.flowscan.io/transaction/5403f9f7fb8f0f9c1ded060ebce7b33685e8b1c4c39a441571947f572f208cbd)
+- [Unwrap TX](https://testnet.flowscan.io/transaction/d47ac8c8dfcb33d8481be0ca4c6d6221c7efc065ac3031731758d8bc508486eb)
+
+---
+
 ## Primitives (openjanus/primitives — TIER 1, do not redeploy)
 
 | Primitive | Address |
