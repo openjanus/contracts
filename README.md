@@ -23,6 +23,7 @@ TIER 3  apps                   — PrivateTip, LetheOrderbook, AuroraReveal, etc
 | Package | Description | Status |
 |---------|-------------|--------|
 | [`@openjanus/janus-token`](./packages/janus-token) | ERC-7984 confidential token (Pedersen + Groth16) | **v0.1.0** |
+| [`@openjanus/janus-token-v2`](./packages/janus-token-v2) | ElGamal accumulator confidential token with ZK-gated wrap/unwrap and pubkey rotation | **v2.0.0** |
 
 ---
 
@@ -32,7 +33,8 @@ Every contract in this repo takes the name of a Roman deity associated with **do
 
 | Name | Deity / Association | Contract | Status |
 |------|---------------------|----------|--------|
-| **Janus** | Dual-faced god of beginnings and thresholds | `JanusToken` — cross-VM confidential token | **v0.1.0** |
+| **Janus** | Dual-faced god of beginnings and thresholds | `JanusToken` — cross-VM confidential token (v1 Pedersen) | **v0.1.0** |
+| **Janus** | Dual-faced god of beginnings and thresholds | `JanusTokenV2` — ElGamal accumulator + ZK proofs | **v2.0.0** |
 | Cardea | Goddess of door hinges | `CardeaVault` — time-locked vault | future |
 | Portunus | God of keys and ports | `PortunusKey` — multisig key manager | future |
 | Limen | God of thresholds | `LimenBridge` — cross-VM router | future |
