@@ -1,6 +1,7 @@
 {
 	"contracts": {
-		"JanusToken": "./contracts/cadence/JanusToken.cdc"
+		"JanusToken": "./contracts/cadence/JanusToken.cdc",
+		"JanusFlow": "./contracts/cadence/JanusFlow.cdc"
 	},
 	"dependencies": {
 		"EVM": {
@@ -39,7 +40,8 @@
 							"type": "String"
 						}
 					]
-				}
+				},
+				"JanusFlow"
 			]
 		}
 	}
