@@ -1,46 +1,21 @@
 # Deployments
 
-## JanusTokenV2 — Flow EVM testnet (chainId 545) — CURRENT
+## JanusToken — Flow EVM testnet (chainId 545) — CURRENT
 
 | Component | Address | Notes |
 |-----------|---------|-------|
-| `JanusTokenV2.sol` (EVM) | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | ElGamal accumulator (v2) |
-| `JanusFlowV2.cdc` (Cadence) | `0x28fef3d1d6a12800` | contract name: `JanusFlowV2` |
-| `EncryptConsistencyVerifier` | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` | v2 ZK verifier |
-| `DecryptOpenVerifier` | `0x3bB139B5404fD6b152813bC3532367AAa096638b` | v2 ZK verifier |
+| `JanusToken.sol` (EVM) | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | ElGamal accumulator |
+| `JanusFlow.cdc` (Cadence) | `0x28fef3d1d6a12800` | contract name: `JanusFlow` |
+| `EncryptConsistencyVerifier` | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` | ZK verifier |
+| `DecryptOpenVerifier` | `0x3bB139B5404fD6b152813bC3532367AAa096638b` | ZK verifier |
 
-See `packages/janus-token-v2/deployments/` for full deploy TX hashes.
-
----
-
-## JanusToken (v1) — DEPRECATED — historical reference only
-
-> **DEPRECATED as of v0.2.0.** These contracts remain deployed on-chain as an immutable
-> historical record. Do not use for new development.
-> See `packages/_archive/janus-token-v1/DEPRECATED.md` for the reason for deprecation.
-
-| Component | Address | Notes |
-|-----------|---------|-------|
-| `JanusToken.sol` (EVM) | `0x53F49881A1132FF4F674D2c015e35D5B07Fa1F4A` | NATIVE mode (no underlying) — DEPRECATED |
-| `JanusToken.cdc` (Cadence) | `0x28fef3d1d6a12800` | contract name: `JanusToken` — DEPRECATED |
-
-### Deploy transactions
-
-| What | Transaction |
-|------|------------|
-| JanusToken EVM deploy (via COA) | `da430e06a5f831505040b284fffdff53fb3bb5c3e2517b3bc1e10e2e2483b291` |
-| JanusToken.cdc deploy | `169325b4a47579451e4f4810a4b5fb87110c54bfd9ff90e1a850f866ca252c31` |
-
-### Flowscan links
-
-- [EVM deploy tx](https://testnet.flowscan.io/tx/da430e06a5f831505040b284fffdff53fb3bb5c3e2517b3bc1e10e2e2483b291)
-- [openjanus account](https://testnet.flowscan.io/account/0x28fef3d1d6a12800)
+See `packages/janus-token/deployments/` for full deploy TX hashes.
 
 ---
 
 ## JanusFlow — Cadence FLOW wrapper (testnet)
 
-> JanusFlow wraps Cadence FLOW tokens into confidential Pedersen commitments.
+> JanusFlow wraps Cadence FLOW tokens into ElGamal-encrypted commitments.
 > Wrap mechanism: **Option Y (Cadence-native)** — FlowToken.Vault custody.
 
 | Component | Address | Notes |
