@@ -1,7 +1,7 @@
 {
 	"contracts": {
-		"JanusToken": "./contracts/cadence/JanusToken.cdc",
-		"JanusFlow": "./contracts/cadence/JanusFlow.cdc"
+		"JanusFlow": "./contracts/cadence/JanusFlow.cdc",
+		"JanusToken": "./contracts/cadence/JanusToken.cdc"
 	},
 	"dependencies": {
 		"EVM": {
@@ -21,6 +21,43 @@
 		"testnet": "access.devnet.nodes.onflow.org:9000"
 	},
 	"accounts": {
+		"bob": {
+			"address": "d807a3992d7be612",
+			"key": {
+				"type": "file",
+				"location": "/home/oydual3/.flow/testnet-bob.pkey"
+			}
+		},
+		"charlie": {
+			"address": "3c601a443c81e6cd",
+			"key": {
+				"type": "file",
+				"location": "/home/oydual3/.flow/testnet-charlie.pkey"
+			}
+		},
+		"dave": {
+			"address": "d32d9100e1fe983b",
+			"key": {
+				"type": "file",
+				"location": "/home/oydual3/.flow/testnet-dave.pkey"
+			}
+		},
+		"eve": {
+			"address": "374a28ddf00498e4",
+			"key": {
+				"type": "file",
+				"location": "/home/oydual3/.flow/testnet-eve.pkey"
+			}
+		},
+		"lab": {
+			"address": "7599043aea001283",
+			"key": {
+				"type": "file",
+				"signatureAlgorithm": "ECDSA_secp256k1",
+				"hashAlgorithm": "SHA2_256",
+				"location": "/home/oydual3/.flow/testnet-claucondor.pkey"
+			}
+		},
 		"openjanus-testnet": {
 			"address": "28fef3d1d6a12800",
 			"key": {

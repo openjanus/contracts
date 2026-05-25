@@ -66,14 +66,13 @@ const CHARLIE_CADENCE  = "0x3c601a443c81e6cd";
 const DAVE_CADENCE     = "0xd32d9100e1fe983b";
 
 // COA EVM addresses (no 0x prefix, 40 hex chars)
-// Alice/lab COA:
-const ALICE_COA    = "00000000000000000000027eb18dc34b9966fd"; // openjanus COA = Alice for testing (same account)
-// Actually Alice is the lab account, not openjanus. Alice has her own COA.
-// Let us use a known test EVM address for Alice derived from lab account COA:
-// (This needs to be queried — set as placeholder, actual address in test below)
-
+// Alice/lab COA (0x7599043aea001283):
+const ALICE_COA    = "000000000000000000000002b7557ee5d4a32d06";
+// Bob (0xd807a3992d7be612):
 const BOB_COA      = "00000000000000000000000250d93efba617e0bf";
+// Charlie (0x3c601a443c81e6cd):
 const CHARLIE_COA  = "00000000000000000000000249065458581f9bf0";
+// Dave (0xd32d9100e1fe983b):
 const DAVE_COA     = "0000000000000000000000027b94cfc8a64971cd";
 
 // openjanus COA EVM (the account that owns JanusToken and calls mintXY)
@@ -167,15 +166,25 @@ async function generateProof(oldValue, oldBlinding, transferValue, transferBlind
 // EVM read helpers
 // ---------------------------------------------------------------------------
 
-async function ethCall(to, data) {
-  const res = await fetch(EVM_RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", method: "eth_call", params: [{ to, data }, "latest"], id: 1 }),
-  });
-  const json = await res.json();
-  if (json.error) throw new Error(`eth_call failed: ${JSON.stringify(json.error)}`);
-  return json.result;
+async function ethCall(to, data, retries = 4) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(EVM_RPC, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "eth_call", params: [{ to, data }, "latest"], id: 1 }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(`eth_call failed: ${JSON.stringify(json.error)}`);
+      return json.result;
+    } catch (err) {
+      if (attempt === retries) throw err;
+      const delay = (attempt + 1) * 3000;
+      console.log(`    [ethCall retry ${attempt + 1}/${retries} after ${delay}ms: ${err.message.slice(0, 60)}]`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
 }
 
 async function readCommitment(evmAddrNoPrefix) {
@@ -308,38 +317,9 @@ async function test1() {
   // The lab account (Alice) has secp256k1 key, not P256, so we use openjanus as signer
   // For this test, we use openjanus to wrap 10 FLOW from openjanus vault to Alice's COA
 
-  // Step 1.2a: Fund openjanus with 10 FLOW from lab (so it can wrap for Alice)
-  console.log("    Funding openjanus with 10 FLOW for Alice's wrap...");
-  const fundWrapArgs = [
-    { type: "Address", value: OPENJANUS_ADDR },
-    { type: "UFix64", value: "10.00000000" },
-  ];
-  const fundWrapResult = flowSend(
-    join(REPO_ROOT, "../../tests/../../../tmp/fund_account.cdc"), // use the funding tx
-    fundWrapArgs,
-    { signer: "lab-account" }
-  );
-  // Actually, let's use openjanus's own balance (it has ~900 FLOW)
-  console.log("    (Using openjanus's own FLOW balance for Alice's wrap)");
-
-  // Get Alice's COA by querying the lab account
-  // Lab account = Alice = 0x7599043aea001283, COA at /storage/evm
-  // Query it via flow script
-  const coaResult = spawnSync("flow", [
-    "scripts", "execute", "/tmp/get_coa_addr.cdc",
-    ALICE_CADENCE,
-    "--network", "testnet",
-  ], { encoding: "utf8", timeout: 30_000 });
-
-  let ALICE_COA_ADDR = null;
-  const coaMatch = (coaResult.stdout || "").match(/"([0-9a-f]+)"/i);
-  if (coaMatch) {
-    ALICE_COA_ADDR = coaMatch[1];
-    console.log(`    Alice COA: 0x${ALICE_COA_ADDR}`);
-  } else {
-    console.log("    Warning: Could not get Alice COA, using openjanus COA as Alice for test");
-    ALICE_COA_ADDR = OPENJANUS_COA;
-  }
+  // Using openjanus's own FLOW balance (it has ~900 FLOW) for Alice's wrap
+  // openjanus acts as custodian — wraps on behalf of Alice's COA slot
+  console.log(`    Alice COA: 0x${ALICE_COA}`);
 
   // Step 1.2b: Wrap 10 FLOW for Alice (mints commitment to Alice's COA slot)
   const wrapArgs = [
@@ -347,7 +327,7 @@ async function test1() {
     { type: "UInt256", value: aliceCommit.x.toString() },
     { type: "UInt256", value: aliceCommit.y.toString() },
     { type: "Address", value: ALICE_CADENCE },
-    { type: "String",  value: ALICE_COA_ADDR },
+    { type: "String",  value: ALICE_COA },
   ];
 
   const wrapResult = flowSend(
@@ -360,7 +340,7 @@ async function test1() {
 
   // Step 1.3: Verify Alice's commitment is on-chain
   console.log("\n  Step 1.3: Verify Alice commitment on EVM");
-  const aliceOnChain = await readCommitment(ALICE_COA_ADDR);
+  const aliceOnChain = await readCommitment(ALICE_COA);
   assertCommitEq(aliceOnChain, aliceCommit, "Alice's on-chain commitment");
 
   // Step 1.4: Verify Bob's commitment is still identity
@@ -384,7 +364,7 @@ async function test1() {
   // Step 1.6: Execute confidential transfer Alice -> Bob
   console.log("\n  Step 1.6: Execute confidentialTransfer (Alice -> Bob)");
   const transferArgs = [
-    { type: "String",  value: ALICE_COA_ADDR },
+    { type: "String",  value: ALICE_COA },
     { type: "String",  value: BOB_COA },
     { type: "Array",   value: proofResult.pubInputs6.map(v => ({ type: "UInt256", value: v.toString() })) },
     { type: "Array",   value: proofResult.proof8.map(v => ({ type: "UInt256", value: v.toString() })) },
@@ -400,7 +380,7 @@ async function test1() {
 
   // Step 1.7: Verify Alice's new commitment = C_new
   console.log("\n  Step 1.7: Verify Alice's commitment updated to C_new");
-  const aliceAfter = await readCommitment(ALICE_COA_ADDR);
+  const aliceAfter = await readCommitment(ALICE_COA);
   assertCommitEq(aliceAfter, proofResult.newCommit, "Alice's post-transfer commitment");
 
   // Step 1.8: Verify Bob's commitment = C_tx (homomorphic add of C_tx to identity)
