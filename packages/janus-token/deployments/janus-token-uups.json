@@ -1,0 +1,30 @@
+{
+  "network": "flow-evm-testnet",
+  "chain_id": 545,
+  "deployed_at": "2026-05-26T23:19:34.139Z",
+  "contract": "JanusToken (UUPS)",
+  "scheme": "ERC1967Proxy → JanusToken implementation",
+  "proxy_address": "0x025efe7e89acdb8F315C804BE7245F348AA9c538",
+  "impl_address": "0x28686066D28Eb86269190Eae76eD7170c21BB7FB",
+  "owner": "0x0000000000000000000000022f6b30af48a94787",
+  "scale": "1000000000000000000",
+  "scale_expected": "1000000000000000000",
+  "impl_owner_direct": "0x0000000000000000000000000000000000000000",
+  "impl_locked": true,
+  "tx_hashes": {
+    "impl_deploy": "bcad3efe59227ca78217dca48425bc21baa80bc5239192f7ceb59ff08dae2f28",
+    "proxy_deploy_with_init": "48b0800621a156f2deaaf06f46b2452a8af55a8e7711469b8ed085d70c5a6875"
+  },
+  "dependencies": {
+    "BabyJub": "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870",
+    "EncryptConsistencyVerifier": "0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e",
+    "DecryptOpenVerifier": "0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc"
+  },
+  "deployer_flow_account": "0xbef3c77681c15397",
+  "deployer_coa_evm": "0x0000000000000000000000022f6b30af48a94787",
+  "deploy_method": "coa.deploy() via Cadence transaction (P-256 Flow signing)",
+  "fixes": [
+    "vulnerability-catalog/014 (unwrap unit mismatch via SCALE=1e18)"
+  ],
+  "upgradability": "UUPS (proxy.upgradeToAndCall, gated by _authorizeUpgrade onlyOwner)"
+}
