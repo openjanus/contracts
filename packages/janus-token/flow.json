@@ -77,18 +77,18 @@
         "type": "file",
         "location": "/home/oydual3/.flow/testnet-eve.pkey"
       }
+    },
+    "openjanus-janusflow-router": {
+      "address": "5dcbeb41055ec57e",
+      "key": {
+        "type": "file",
+        "location": "/home/oydual3/.flow/openjanus-janusflow-router.pkey"
+      }
     }
   },
   "deployments": {
     "testnet": {
-      "openjanus-testnet": [
-        {
-          "name": "JanusFlow",
-          "args": [],
-          "note": "DEPRECATED: legacy v1 Pedersen-based at 0x28fef3d1d6a12800, cannot remove"
-        }
-      ],
-      "openjanus-flow": [
+      "openjanus-janusflow-router": [
         "IJanusFlowImpl",
         "JanusFlowImpl",
         {
@@ -96,7 +96,7 @@
           "args": [
             {
               "type": "String",
-              "value": "0xb12E600fFcde967210cFD81CF9f32bBB6e68a499"
+              "value": "0x025efe7e89acdb8F315C804BE7245F348AA9c538"
             }
           ]
         }
