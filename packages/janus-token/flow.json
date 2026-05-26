@@ -1,5 +1,7 @@
 {
   "contracts": {
+    "IJanusFlowImpl": "./contracts/cadence/IJanusFlowImpl.cdc",
+    "JanusFlowImpl": "./contracts/cadence/JanusFlowImpl.cdc",
     "JanusFlow": "./contracts/cadence/JanusFlow.cdc"
   },
   "dependencies": {
@@ -41,6 +43,13 @@
         "location": "/home/oydual3/.flow/openjanus-testnet.pkey"
       }
     },
+    "openjanus-flow": {
+      "address": "bef3c77681c15397",
+      "key": {
+        "type": "file",
+        "location": "/home/oydual3/.flow/openjanus-flow.pkey"
+      }
+    },
     "bob": {
       "address": "d807a3992d7be612",
       "key": {
@@ -75,7 +84,21 @@
       "openjanus-testnet": [
         {
           "name": "JanusFlow",
-          "args": []
+          "args": [],
+          "note": "DEPRECATED: legacy v1 Pedersen-based at 0x28fef3d1d6a12800, cannot remove"
+        }
+      ],
+      "openjanus-flow": [
+        "IJanusFlowImpl",
+        "JanusFlowImpl",
+        {
+          "name": "JanusFlow",
+          "args": [
+            {
+              "type": "String",
+              "value": "0xb12E600fFcde967210cFD81CF9f32bBB6e68a499"
+            }
+          ]
         }
       ]
     }

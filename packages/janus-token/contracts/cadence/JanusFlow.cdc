@@ -1,312 +1,411 @@
-// JanusFlow.cdc — Cadence wrapper for JanusToken ElGamal accumulator
+// JanusFlow.cdc — Router + custody for confidential FLOW wrapping
 //
-// Architecture:
-//   Cadence manages FLOW vault custody.
-//   EVM (JanusToken) manages encrypted balance accounting.
-//   Cross-VM calls via each user's own COA.
+// Architecture: Router/façade + swappable pure-logic implementation
 //
-// Key insight (per-user COA pattern):
-//   Each user has their own COA at /storage/evm.
-//   The COA's EVM address is that user's msg.sender in JanusToken.
-//   This means JanusToken.locked[coa.address()] tracks per-user FLOW.
-//   NO shared COA — every user is independently sovereign.
+//   JanusFlow   = router + custody (FlowToken vault, commitments, pubkeys)
+//                 State NEVER moves on impl swap.
 //
-// Operations:
-//   wrap()                 — deposit FLOW + encrypt ciphertext to recipient's slot
-//   confidentialTransfer() — transfer encrypted ciphertext (no FLOW moves)
-//   unwrap()               — prove decryption + release FLOW to recipient
-//   registerPubkey()       — register BabyJub pubkey via COA
-//   commitRotation()       — start pubkey rotation
-//   finalizeRotation()     — complete pubkey rotation after timelock
+//   JanusFlowImpl = pure-logic impl (stateless, no resources)
+//                   Swappable via 48h time-lock.
 //
-// Privacy properties:
-//   - Recipient learns total only, not per-sender breakdown
-//   - Sender-recipient pairing visible on-chain by design
-//   - Wrap/unwrap amounts visible via EVM Transfer events (unavoidable)
-//   - IND-CPA under DDH on BabyJubJub
+// Cross-VM design (per-user COA pattern):
+//   Proof verification happens on EVM (JanusToken.sol).
+//   The Cadence router calls JanusToken via the USER's COA as msg.sender.
+//   EVM rejects invalid proofs → Cadence tx rolls back → no state update.
 //
-// Deployed at: 0x28fef3d1d6a12800 (openjanus testnet account)
-// EVM target:  JanusToken at [set after EVM deploy]
+// Admin model: capability-based AdminResource in contract deployer's storage.
+//
+// Pause: emergency stop on all user-facing operations.
+//
+// Impl swap: 48h time-lock so apps can react before upgrade takes effect.
+//
+// Deployed at: bef3c77681c15397 (openjanus-flow secondary account)
+// EVM target: JanusToken at 0xb12E600fFcde967210cFD81CF9f32bBB6e68a499
+//
+// Replaces zombie legacy at 0x28fef3d1d6a12800 (which cannot be removed per protocol rules).
 
 import "EVM"
 import "FlowToken"
 import "FungibleToken"
+import IJanusFlowImpl from 0xbef3c77681c15397
+import JanusFlowImpl from 0xbef3c77681c15397
 
 access(all) contract JanusFlow {
 
-    // ─── Constants ──────────────────────────────────────────────────────────
+    // ─── Storage Paths ──────────────────────────────────────────────────────────
 
-    /// JanusToken EVM contract address (set at deploy time)
-    access(self) var janusToken: EVM.EVMAddress
+    access(all) let AdminStoragePath: StoragePath
 
-    /// BabyJub.sol EVM address (reused from phase 1)
-    access(all) let babyJubEVM: EVM.EVMAddress
-
-    // ─── State ──────────────────────────────────────────────────────────────
+    // ─── State — Custody ─────────────────────────────────────────────────────────
+    // Custody NEVER moves on impl swap.
 
     /// Total FLOW locked in this contract (across all users)
     access(self) var totalLocked: UFix64
 
-    // ─── Events ─────────────────────────────────────────────────────────────
+    /// Per-user encrypted commitment slots.
+    /// Value = 128-byte ElGamal ciphertext (4 × 32-byte field elements: C1x, C1y, C2x, C2y).
+    /// nil = no commitment (user hasn't wrapped yet).
+    access(self) var commitments: {Address: [UInt8]}
+
+    /// Per-user BabyJubJub public keys (64 bytes: x || y).
+    access(self) var pubkeys: {Address: [UInt8]}
+
+    // ─── State — Router ──────────────────────────────────────────────────────────
+
+    /// JanusToken EVM contract address (set at deploy time, immutable)
+    access(self) let janusTokenEVM: EVM.EVMAddress
+
+    /// Active implementation version string
+    access(self) var activeImpl: String
+
+    /// Whether contract is paused (emergency stop)
+    access(self) var paused: Bool
+
+    /// Pending impl swap: new impl version string
+    access(self) var pendingImplVersion: String?
+
+    /// Unix timestamp after which the pending impl swap can be finalized (48h delay)
+    access(self) var pendingImplUnlockAt: UFix64
+
+    // ─── Events ─────────────────────────────────────────────────────────────────
 
     access(all) event Wrapped(
-        from: Address,
-        toEVM: String,
+        depositor: Address,
         amountFlow: UFix64,
-        nonce: UInt256
+        toEVMHex: String
     )
-
-    access(all) event ConfidentialTransfer(
+    access(all) event ConfidentialTransferred(
         from: Address,
-        fromEVM: String,
-        toEVM: String,
-        transferAmountAttoFlow: UInt256,
-        nonce: UInt256
+        to: Address,
+        transferAmountAttoFlow: UInt256
     )
-
     access(all) event Unwrapped(
         from: Address,
-        fromEVM: String,
         recipient: Address,
         amountFlow: UFix64
     )
+    access(all) event PubkeyRegistered(account: Address)
+    access(all) event Paused()
+    access(all) event Unpaused()
+    access(all) event ImplSwapProposed(pendingVersion: String, unlockAt: UFix64)
+    access(all) event ImplSwapped(oldVersion: String, newVersion: String)
+    access(all) event ImplSwapCancelled()
 
-    access(all) event PubkeyRegistered(
-        account: Address,
-        evmAddress: String,
-        pkX: String,
-        pkY: String
-    )
+    // ─── Public User Functions ────────────────────────────────────────────────────
 
-    access(all) event RotationCommitted(account: Address, evmAddress: String)
-    access(all) event RotationFinalized(account: Address, evmAddress: String)
-
-    // ─── ABI encoding helpers ────────────────────────────────────────────────
-    //
-    // All calldata is ABI-encoded off-chain by the TypeScript SDK and passed
-    // as [UInt8] hex arrays. The Cadence contract just forwards the calldata
-    // to JanusToken via the user's COA. This avoids reimplementing ABI
-    // encoding in Cadence (which is error-prone and gas-expensive).
-
-    // ─── Public functions ────────────────────────────────────────────────────
-
-    /// Register a BabyJubJub public key for msg.sender's COA.
-    /// @param signer        The Flow account (must have COA at /storage/evm)
-    /// @param calldataHex   ABI-encoded calldata for registerPubkey(uint256,uint256)
+    /// Register a BabyJubJub public key for the signer's account.
+    ///
+    /// @param signer       Flow account with COA at /storage/evm
+    /// @param pubkey       64-byte BabyJubJub public key (x || y, big-endian 32B each)
+    /// @param calldataHex  ABI-encoded calldata for JanusToken.registerPubkey(uint256,uint256)
     access(all) fun registerPubkey(
         signer: auth(BorrowValue) &Account,
+        pubkey: [UInt8],
         calldataHex: String
     ) {
-        let coa = JanusFlow._borrowCOA(signer: signer)
-        let evmAddr = coa.address().toString()
+        pre {
+            !self.paused: "JanusFlow: contract is paused"
+            pubkey.length == 64: "JanusFlow: pubkey must be 64 bytes"
+        }
 
+        let user = signer.address
+        let coa = self._borrowCOA(signer: signer)
+
+        // Call JanusToken.registerPubkey on EVM (registers pubkey in EVM accounting)
         let result = coa.call(
-            to: self.janusToken,
+            to: self.janusTokenEVM,
             data: calldataHex.decodeHex(),
             gasLimit: 200_000,
             value: EVM.Balance(attoflow: 0)
         )
         assert(
             result.status == EVM.Status.successful,
-            message: "JanusFlow.registerPubkey failed: ".concat(result.errorMessage)
+            message: "JanusFlow.registerPubkey EVM call failed: ".concat(result.errorMessage)
         )
 
-        emit PubkeyRegistered(
-            account: signer.address,
-            evmAddress: evmAddr,
-            pkX: "",
-            pkY: ""
-        )
+        // Store pubkey in Cadence state
+        self.pubkeys[user] = pubkey
+        emit PubkeyRegistered(account: user)
     }
 
     /// Wrap FLOW into a confidential slot for a recipient.
-    /// @param signer         The sending Flow account (their COA will be msg.sender)
-    /// @param vault          FLOW to lock (must be > 0)
-    /// @param toEVMHex       Recipient's EVM address (hex, with 0x prefix)
-    /// @param senderNonce    Sender's current nonce (must match on-chain)
-    /// @param calldataHex    Pre-encoded calldata for wrap(...) — all args except msg.value
+    ///
+    /// Flow:
+    ///   1. Impl validates inputs (size checks, zero-amount guard).
+    ///   2. FLOW vault receives custody.
+    ///   3. EVM call verifies Groth16 proof (encrypt_consistency).
+    ///   4. Commitment state updated.
+    ///
+    /// @param signer       The sending Flow account (must have COA at /storage/evm)
+    /// @param vault        FLOW to lock (amount > 0)
+    /// @param recipient    Recipient's Flow address
+    /// @param toEVMHex     Recipient's EVM address (hex with 0x prefix)
+    /// @param ciphertext   128-byte accumulated ElGamal ciphertext for recipient
+    /// @param senderNonce  Sender's current nonce (must match JanusToken on-chain)
+    /// @param calldataHex  ABI-encoded calldata for JanusToken.wrap(...)
     access(all) fun wrap(
         signer: auth(BorrowValue) &Account,
         vault: @FlowToken.Vault,
+        recipient: Address,
         toEVMHex: String,
+        ciphertext: [UInt8],
         senderNonce: UInt256,
         calldataHex: String
     ) {
+        pre {
+            !self.paused: "JanusFlow: contract is paused"
+        }
+
         let amount = vault.balance
         assert(amount > 0.0, message: "JanusFlow.wrap: zero amount")
 
-        let coa = JanusFlow._borrowCOA(signer: signer)
-
-        // Convert UFix64 FLOW to attoFLOW (1 FLOW = 1e18 attoFLOW)
-        // UFix64 has 8 decimal places: amount * 1e8 gives integer FLOW-units,
-        // then * 1e10 gives attoFLOW. EVM.Balance requires UInt.
+        // Convert UFix64 FLOW to attoFLOW for impl validation
         let flowUnits: UInt64 = UInt64(amount * 100_000_000.0)
-        let attoflow: UInt = UInt(flowUnits) * 10_000_000_000
+        let attoflow: UInt256 = UInt256(flowUnits) * 10_000_000_000
 
-        // Deposit FLOW to contract's vault
-        JanusFlow._depositToVault(vault: <-vault)
-
-        // Call JanusToken.wrap() with msg.value = attoflow
-        let result = coa.call(
-            to: self.janusToken,
-            data: calldataHex.decodeHex(),
-            gasLimit: 400_000,
-            value: EVM.Balance(attoflow: attoflow)
+        // Ask impl to validate inputs (structural checks)
+        let errMsg = JanusFlowImpl.validateWrap(
+            amountAttoFlow: attoflow,
+            ciphertext: ciphertext,
+            recipient: recipient,
+            hasExistingCommitment: self.commitments[recipient] != nil
         )
-        assert(
-            result.status == EVM.Status.successful,
-            message: "JanusFlow.wrap EVM call failed: ".concat(result.errorMessage)
-        )
+        assert(errMsg == "", message: "JanusFlow.wrap: ".concat(errMsg))
 
+        // Custody: FLOW enters the contract vault
+        self._depositToVault(vault: <-vault)
         self.totalLocked = self.totalLocked + amount
 
+        // EVM call: JanusToken.wrap verifies Groth16 proof + updates EVM accounting
+        let coa = self._borrowCOA(signer: signer)
+        let attoflowUInt: UInt = UInt(flowUnits) * 10_000_000_000
+        let evmResult = coa.call(
+            to: self.janusTokenEVM,
+            data: calldataHex.decodeHex(),
+            gasLimit: 400_000,
+            value: EVM.Balance(attoflow: attoflowUInt)
+        )
+        assert(
+            evmResult.status == EVM.Status.successful,
+            message: "JanusFlow.wrap EVM call failed: ".concat(evmResult.errorMessage)
+        )
+
+        // Update commitment state (client sends the accumulated ciphertext)
+        self.commitments[recipient] = ciphertext
+
         emit Wrapped(
-            from: signer.address,
-            toEVM: toEVMHex,
+            depositor: signer.address,
             amountFlow: amount,
-            nonce: senderNonce
+            toEVMHex: toEVMHex
         )
     }
 
-    /// Confidential transfer: reassign locked FLOW + accumulate ciphertext.
-    /// No FLOW moves out of the contract; only the EVM accounting changes.
-    /// @param signer           The sending Flow account
-    /// @param toEVMHex         Recipient's EVM address
-    /// @param transferAmount   Amount in attoFLOW to reassign
-    /// @param senderNonce      Sender's current nonce
-    /// @param calldataHex      Pre-encoded calldata for confidentialTransfer(...)
+    /// Confidential transfer: move encrypted balance from sender to recipient.
+    /// No FLOW moves out of the contract — only EVM accounting and commitments change.
+    ///
+    /// @param signer              Sending Flow account (must have registered pubkey + COA)
+    /// @param recipient           Recipient's Flow address
+    /// @param toEVMHex            Recipient's EVM address
+    /// @param transferAttoFlow    Amount in attoFLOW to transfer
+    /// @param senderNonce         Sender's current nonce
+    /// @param newSenderCiphertext Sender's new commitment after transfer (128 bytes)
+    /// @param recipientCiphertext Recipient's new accumulated commitment (128 bytes)
+    /// @param calldataHex         ABI-encoded calldata for JanusToken.confidentialTransfer(...)
     access(all) fun confidentialTransfer(
         signer: auth(BorrowValue) &Account,
+        recipient: Address,
         toEVMHex: String,
-        transferAmount: UInt256,
+        transferAttoFlow: UInt256,
         senderNonce: UInt256,
+        newSenderCiphertext: [UInt8],
+        recipientCiphertext: [UInt8],
         calldataHex: String
     ) {
-        let coa = JanusFlow._borrowCOA(signer: signer)
-        let evmAddr = coa.address().toString()
+        pre {
+            !self.paused: "JanusFlow: contract is paused"
+        }
 
-        let result = coa.call(
-            to: self.janusToken,
+        let sender = signer.address
+        assert(
+            self.commitments[sender] != nil,
+            message: "JanusFlow.confidentialTransfer: sender has no commitment"
+        )
+
+        // Ask impl to validate (structural checks)
+        let errMsg = JanusFlowImpl.validateTransfer(
+            hasSenderCommitment: true,
+            transferAttoFlow: transferAttoFlow,
+            recipientCiphertext: recipientCiphertext,
+            newSenderCiphertext: newSenderCiphertext
+        )
+        assert(errMsg == "", message: "JanusFlow.confidentialTransfer: ".concat(errMsg))
+
+        // EVM call: JanusToken.confidentialTransfer verifies Groth16 proof + updates EVM state
+        let coa = self._borrowCOA(signer: signer)
+        let evmResult = coa.call(
+            to: self.janusTokenEVM,
             data: calldataHex.decodeHex(),
             gasLimit: 600_000,
             value: EVM.Balance(attoflow: 0)
         )
         assert(
-            result.status == EVM.Status.successful,
-            message: "JanusFlow.confidentialTransfer failed: ".concat(result.errorMessage)
+            evmResult.status == EVM.Status.successful,
+            message: "JanusFlow.confidentialTransfer EVM call failed: ".concat(evmResult.errorMessage)
         )
 
-        emit ConfidentialTransfer(
-            from: signer.address,
-            fromEVM: evmAddr,
-            toEVM: toEVMHex,
-            transferAmountAttoFlow: transferAmount,
-            nonce: senderNonce
+        // Update Cadence commitments (client provides both sides)
+        self.commitments[sender] = newSenderCiphertext
+        self.commitments[recipient] = recipientCiphertext
+
+        emit ConfidentialTransferred(
+            from: sender,
+            to: recipient,
+            transferAmountAttoFlow: transferAttoFlow
         )
     }
 
-    /// Unwrap: verify decrypt_open ZK proof + release FLOW to recipient.
-    /// @param signer        The caller (must be slot owner)
-    /// @param amount        Claimed total in slot (in UFix64 FLOW)
-    /// @param recipient     Flow address to receive unwrapped FLOW
-    /// @param calldataHex   Pre-encoded calldata for unwrap(amount, recipient, publicInputs, proof)
+    /// Unwrap: prove decrypt_open ZK proof + release FLOW to recipient.
+    ///
+    /// @param signer          Caller (must be slot owner with COA)
+    /// @param claimedAmount   Amount in UFix64 FLOW claimed in slot
+    /// @param recipient       Flow address to receive FLOW
+    /// @param calldataHex     ABI-encoded calldata for JanusToken.unwrap(...)
     access(all) fun unwrap(
         signer: auth(BorrowValue) &Account,
-        amount: UFix64,
+        claimedAmount: UFix64,
         recipient: Address,
         calldataHex: String
     ) {
-        assert(amount > 0.0, message: "JanusFlow.unwrap: zero amount")
-        assert(
-            amount <= self.totalLocked,
-            message: "JanusFlow.unwrap: amount exceeds total locked"
+        pre {
+            !self.paused: "JanusFlow: contract is paused"
+            claimedAmount > 0.0: "JanusFlow.unwrap: zero amount"
+            claimedAmount <= self.totalLocked: "JanusFlow.unwrap: amount exceeds totalLocked"
+        }
+
+        let user = signer.address
+
+        // Convert to attoFLOW for impl
+        let flowUnits: UInt64 = UInt64(claimedAmount * 100_000_000.0)
+        let attoflow: UInt256 = UInt256(flowUnits) * 10_000_000_000
+
+        // Impl validates structural constraints
+        let errMsg = JanusFlowImpl.validateUnwrap(
+            hasCommitment: self.commitments[user] != nil,
+            claimedAmountAttoFlow: attoflow
         )
+        assert(errMsg == "", message: "JanusFlow.unwrap: ".concat(errMsg))
 
-        let coa = JanusFlow._borrowCOA(signer: signer)
-        let evmAddr = coa.address().toString()
-
-        // Call JanusToken.unwrap() — EVM will verify proof + deduct locked[coa]
-        // Note: the EVM contract sends attoFLOW to the contract address itself
-        // (since the contract holds the vault), not directly to recipient.
-        // After the EVM call, we release from the Cadence vault.
-        let result = coa.call(
-            to: self.janusToken,
+        // EVM call: JanusToken.unwrap verifies Groth16 proof + updates EVM accounting
+        let coa = self._borrowCOA(signer: signer)
+        let evmResult = coa.call(
+            to: self.janusTokenEVM,
             data: calldataHex.decodeHex(),
             gasLimit: 600_000,
             value: EVM.Balance(attoflow: 0)
         )
         assert(
-            result.status == EVM.Status.successful,
-            message: "JanusFlow.unwrap EVM call failed: ".concat(result.errorMessage)
+            evmResult.status == EVM.Status.successful,
+            message: "JanusFlow.unwrap EVM call failed: ".concat(evmResult.errorMessage)
         )
 
-        // Release FLOW from our vault to recipient
-        JanusFlow._releaseFromVault(recipient: recipient, amount: amount)
-        self.totalLocked = self.totalLocked - amount
+        // Clear commitment slot (full drain — partial unwrap not supported in v0.1.0)
+        self.commitments.remove(key: user)
 
-        emit Unwrapped(
-            from: signer.address,
-            fromEVM: evmAddr,
-            recipient: recipient,
-            amountFlow: amount
-        )
+        // Release FLOW from custody to recipient
+        self._releaseFromVault(recipient: recipient, amount: claimedAmount)
+        self.totalLocked = self.totalLocked - claimedAmount
+
+        emit Unwrapped(from: user, recipient: recipient, amountFlow: claimedAmount)
     }
 
-    /// Commit a pubkey rotation (starts timelock).
-    access(all) fun commitRotation(
-        signer: auth(BorrowValue) &Account,
-        calldataHex: String
-    ) {
-        let coa = JanusFlow._borrowCOA(signer: signer)
-        let evmAddr = coa.address().toString()
+    // ─── Admin Functions ─────────────────────────────────────────────────────────
 
-        let result = coa.call(
-            to: self.janusToken,
-            data: calldataHex.decodeHex(),
-            gasLimit: 100_000,
-            value: EVM.Balance(attoflow: 0)
-        )
-        assert(
-            result.status == EVM.Status.successful,
-            message: "JanusFlow.commitRotation failed: ".concat(result.errorMessage)
-        )
+    access(all) resource AdminResource {
 
-        emit RotationCommitted(account: signer.address, evmAddress: evmAddr)
+        /// Pause all user-facing operations (emergency stop)
+        access(all) fun pause() {
+            JanusFlow.paused = true
+            emit Paused()
+        }
+
+        /// Resume all user-facing operations
+        access(all) fun unpause() {
+            JanusFlow.paused = false
+            emit Unpaused()
+        }
+
+        /// Propose an implementation swap (starts 48h time-lock).
+        /// @param newImplVersion  Version string of the new impl to activate
+        access(all) fun proposeImplSwap(newImplVersion: String) {
+            JanusFlow.pendingImplVersion = newImplVersion
+            JanusFlow.pendingImplUnlockAt = getCurrentBlock().timestamp + 172800.0 // 48h in seconds
+            emit ImplSwapProposed(
+                pendingVersion: newImplVersion,
+                unlockAt: JanusFlow.pendingImplUnlockAt
+            )
+        }
+
+        /// Finalize an impl swap after the 48h time-lock expires.
+        access(all) fun finalizeImplSwap() {
+            pre {
+                JanusFlow.pendingImplVersion != nil: "JanusFlow: no pending impl swap"
+                getCurrentBlock().timestamp >= JanusFlow.pendingImplUnlockAt:
+                    "JanusFlow: time-lock has not expired yet"
+            }
+            let oldVersion = JanusFlow.activeImpl
+            JanusFlow.activeImpl = JanusFlow.pendingImplVersion!
+            JanusFlow.pendingImplVersion = nil
+            JanusFlow.pendingImplUnlockAt = 0.0
+            emit ImplSwapped(oldVersion: oldVersion, newVersion: JanusFlow.activeImpl)
+        }
+
+        /// Cancel a pending impl swap (no time-lock for cancellation)
+        access(all) fun cancelImplSwap() {
+            JanusFlow.pendingImplVersion = nil
+            JanusFlow.pendingImplUnlockAt = 0.0
+            emit ImplSwapCancelled()
+        }
     }
 
-    /// Finalize a pubkey rotation (only works after timelock has elapsed).
-    access(all) fun finalizeRotation(
-        signer: auth(BorrowValue) &Account,
-        calldataHex: String
-    ) {
-        let coa = JanusFlow._borrowCOA(signer: signer)
-        let evmAddr = coa.address().toString()
+    // ─── View Functions ──────────────────────────────────────────────────────────
 
-        let result = coa.call(
-            to: self.janusToken,
-            data: calldataHex.decodeHex(),
-            gasLimit: 100_000,
-            value: EVM.Balance(attoflow: 0)
-        )
-        assert(
-            result.status == EVM.Status.successful,
-            message: "JanusFlow.finalizeRotation failed: ".concat(result.errorMessage)
-        )
-
-        emit RotationFinalized(account: signer.address, evmAddress: evmAddr)
-    }
-
-    // ─── View functions ──────────────────────────────────────────────────────
-
-    access(all) fun getTotalLocked(): UFix64 {
+    access(all) view fun getTotalLocked(): UFix64 {
         return self.totalLocked
     }
 
-    access(all) fun getJanusTokenAddress(): String {
-        return self.janusToken.toString()
+    access(all) view fun getJanusTokenAddress(): String {
+        return self.janusTokenEVM.toString()
     }
 
-    // ─── Private helpers ─────────────────────────────────────────────────────
+    access(all) view fun isPaused(): Bool {
+        return self.paused
+    }
+
+    access(all) view fun getActiveImplVersion(): String {
+        return self.activeImpl
+    }
+
+    access(all) view fun getPendingImplVersion(): String? {
+        return self.pendingImplVersion
+    }
+
+    access(all) view fun getPendingImplUnlockAt(): UFix64 {
+        return self.pendingImplUnlockAt
+    }
+
+    access(all) view fun getCommitment(user: Address): [UInt8]? {
+        return self.commitments[user]
+    }
+
+    access(all) view fun getPubkey(user: Address): [UInt8]? {
+        return self.pubkeys[user]
+    }
+
+    access(all) view fun hasCommitment(user: Address): Bool {
+        return self.commitments[user] != nil
+    }
+
+    // ─── Private Helpers ─────────────────────────────────────────────────────────
 
     access(self) fun _borrowCOA(signer: auth(BorrowValue) &Account): auth(EVM.Call) &EVM.CadenceOwnedAccount {
         return signer.storage
@@ -314,9 +413,6 @@ access(all) contract JanusFlow {
             ?? panic("JanusFlow: no COA at /storage/evm — call EVM.createCadenceOwnedAccount() first")
     }
 
-    /// Internal vault for FLOW custody.
-    /// The vault lives in contract storage. In production, use a capability-based
-    /// resource pattern. For testnet, we keep this simple.
     access(self) fun _depositToVault(vault: @FlowToken.Vault) {
         let contractVault = self.account.storage
             .borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(from: /storage/janusFlowVault)
@@ -339,15 +435,28 @@ access(all) contract JanusFlow {
         recipientRef.deposit(from: <-withdrawVault)
     }
 
-    // ─── Initializer ─────────────────────────────────────────────────────────
+    // ─── Initializer ─────────────────────────────────────────────────────────────
 
-    init(janusTokenHex: String, babyJubHex: String) {
-        self.janusToken = EVM.addressFromString(janusTokenHex)
-        self.babyJubEVM = EVM.addressFromString(babyJubHex)
+    init(janusTokenHex: String) {
+        self.AdminStoragePath = /storage/janusFlowAdmin
+
+        self.janusTokenEVM = EVM.addressFromString(janusTokenHex)
         self.totalLocked = 0.0
+        self.commitments = {}
+        self.pubkeys = {}
+        self.paused = false
+        self.activeImpl = "0.1.0"
+        self.pendingImplVersion = nil
+        self.pendingImplUnlockAt = 0.0
 
-        // Initialize the FLOW vault for custody
+        // Initialize FLOW custody vault
         let vault <- FlowToken.createEmptyVault(vaultType: Type<@FlowToken.Vault>())
         self.account.storage.save(<-vault, to: /storage/janusFlowVault)
+
+        // Save admin resource to deployer's storage
+        self.account.storage.save(
+            <-create AdminResource(),
+            to: self.AdminStoragePath
+        )
     }
 }
