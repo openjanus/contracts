@@ -1,15 +1,36 @@
 # Deployments
 
-## JanusToken — Flow EVM testnet (chainId 545) — CURRENT
+## JanusToken — Flow EVM testnet (chainId 545) — v0.2.0 CURRENT
+
+Trusted setup: Hermez pot14 (200+ contributors) + Flow VRF beacon
+(testnet block 323555648, hash `30f1f68eed7ea6e7b4964e798ff8a0e2b77e7ca073ed80ac44d39ddc5fb395e7`).
 
 | Component | Address | Notes |
 |-----------|---------|-------|
-| `JanusToken.sol` (EVM) | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | ElGamal accumulator |
-| `JanusFlow.cdc` (Cadence) | `0x28fef3d1d6a12800` | contract name: `JanusFlow` |
-| `EncryptConsistencyVerifier` | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` | ZK verifier |
-| `DecryptOpenVerifier` | `0x3bB139B5404fD6b152813bC3532367AAa096638b` | ZK verifier |
+| `JanusToken.sol` (EVM) | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` | ElGamal accumulator |
+| `JanusFlow.cdc` (Cadence) | `0x28fef3d1d6a12800` | contract name: `JanusFlow` (LEGACY v1) |
+| `EncryptConsistencyVerifier` | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` | ZK verifier |
+| `DecryptOpenVerifier` | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` | ZK verifier |
 
-See `packages/janus-token/deployments/` for full deploy TX hashes.
+See `packages/janus-token/deployments/` for full deploy TX hashes and ceremony details.
+
+**JanusFlow Cadence note:** The on-chain JanusFlow contract is legacy v1 (Pedersen architecture).
+Flow protocol requires FlowServiceAccount authorization to remove a Cadence contract. For v0.2.0,
+use JanusToken EVM directly via COA. Redeploy planned for v0.3.0.
+
+**E2E validation:** 27/27 tests PASS against v0.2.0 deployment (2026-05-26).
+
+---
+
+## DEPRECATED — v0.1.0 (2026-05-25, single-contributor lab setup)
+
+These addresses used a single-contributor lab pot14 setup. DO NOT USE.
+
+| Component | DEPRECATED Address |
+|-----------|--------------------|
+| `JanusToken.sol` (EVM) | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
+| `EncryptConsistencyVerifier` | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
+| `DecryptOpenVerifier` | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
 
 ---
 

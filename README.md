@@ -82,14 +82,26 @@ See [packages/janus-token/README.md](./packages/janus-token/README.md) for the f
 | PedersenBabyJub.cdc | Flow testnet (Cadence) | `0x28fef3d1d6a12800` |
 | openjanus COA | Flow EVM testnet | `0x0000000000000000000000027eb18dc34b9966fd` |
 
-### JanusToken contracts (current)
+### JanusToken contracts — v0.2.0 (current, ceremony-backed)
+
+Trusted setup: Hermez pot14 (200+ contributors) + Flow VRF beacon (testnet block 323555648).
 
 | Contract | Network | Address |
 |----------|---------|---------|
-| JanusToken.sol | Flow EVM testnet | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
-| JanusFlow.cdc | Flow Cadence testnet | `0x28fef3d1d6a12800` (contract: `JanusFlow`) |
-| EncryptConsistencyVerifier | Flow EVM testnet | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
-| DecryptOpenVerifier | Flow EVM testnet | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
+| JanusToken.sol | Flow EVM testnet | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` |
+| JanusFlow.cdc | Flow Cadence testnet | `0x28fef3d1d6a12800` (contract: `JanusFlow`, LEGACY v1) |
+| EncryptConsistencyVerifier | Flow EVM testnet | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` |
+| DecryptOpenVerifier | Flow EVM testnet | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` |
+
+E2E: 27/27 PASS (2026-05-26). See `docs/DEPLOYMENTS.md` for full details.
+
+#### DEPRECATED — v0.1.0 addresses (single-contributor lab setup — DO NOT USE)
+
+| Contract | DEPRECATED Address |
+|----------|--------------------|
+| JanusToken.sol | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
+| EncryptConsistencyVerifier | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
+| DecryptOpenVerifier | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
 
 ---
 
