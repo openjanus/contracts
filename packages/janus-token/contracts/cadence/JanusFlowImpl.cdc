@@ -14,9 +14,9 @@
 //   EVM call in the router will reject any proof that doesn't verify.
 //   If EVM rejects → Cadence tx panics → no state persisted.
 //
-// Deployed at: bef3c77681c15397 (openjanus-flow secondary account)
+// Deployed at: 5dcbeb41055ec57e (openjanus-janusflow-router account — new for v0.2.1)
 
-import IJanusFlowImpl from 0xbef3c77681c15397
+import IJanusFlowImpl from 0x5dcbeb41055ec57e
 
 access(all) contract JanusFlowImpl: IJanusFlowImpl {
 

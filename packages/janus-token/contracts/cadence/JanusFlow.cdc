@@ -19,16 +19,18 @@
 //
 // Impl swap: 48h time-lock so apps can react before upgrade takes effect.
 //
-// Deployed at: bef3c77681c15397 (openjanus-flow secondary account)
-// EVM target: JanusToken at 0xb12E600fFcde967210cFD81CF9f32bBB6e68a499
+// Deployed at: 5dcbeb41055ec57e (openjanus-janusflow-router account — new for v0.2.1)
+// EVM target: JanusToken (UUPS proxy) at 0x025efe7e89acdb8F315C804BE7245F348AA9c538
 //
-// Replaces zombie legacy at 0x28fef3d1d6a12800 (which cannot be removed per protocol rules).
+// Replaces previous router at 0xbef3c77681c15397 (which had a 48h impl-swap time-lock
+// blocking the v0.2.1 fix-vuln-014 redeploy).
+// Also replaces zombie legacy at 0x28fef3d1d6a12800 (cannot be removed per protocol rules).
 
 import "EVM"
 import "FlowToken"
 import "FungibleToken"
-import IJanusFlowImpl from 0xbef3c77681c15397
-import JanusFlowImpl from 0xbef3c77681c15397
+import IJanusFlowImpl from 0x5dcbeb41055ec57e
+import JanusFlowImpl from 0x5dcbeb41055ec57e
 
 access(all) contract JanusFlow {
 

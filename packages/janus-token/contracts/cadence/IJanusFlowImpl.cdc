@@ -13,7 +13,7 @@
 // methods use primitive return types (Strings for status, tuples via multiple return values
 // are not supported in Cadence, so we use a String-encoded result convention).
 //
-// Deployed at: bef3c77681c15397 (openjanus-flow secondary account)
+// Deployed at: 5dcbeb41055ec57e (openjanus-janusflow-router account — new for v0.2.1)
 
 access(all) contract interface IJanusFlowImpl {
 
