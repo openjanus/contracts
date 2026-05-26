@@ -6,8 +6,10 @@
   "deploy_tx": "6f5f551f6e7af4def5cd9d7d5098b4c13daff9eaaaf0598c10feddbac0b0e7b5",
   "status": "SEALED",
   "evm_dependency": {
-    "JanusToken": "0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D",
+    "JanusToken": "0xb12E600fFcde967210cFD81CF9f32bBB6e68a499",
     "BabyJub": "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
   },
-  "import_pattern": "import JanusFlow from 0x28fef3d1d6a12800"
+  "import_pattern": "import JanusFlow from 0x28fef3d1d6a12800",
+  "note": "On-chain JanusFlow at 0x28fef3d1d6a12800 is v1.1.0 (Pedersen architecture). Update to new JanusToken address blocked by Flow protocol contract removal restriction. EVM layer (JanusToken 0xb12E600...) is v0.2.0 ceremony-backed. E2E test passes 27/27 against new EVM addresses.",
+  "ceremony_version": "0.2.0"
 }

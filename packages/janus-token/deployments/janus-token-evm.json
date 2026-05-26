@@ -1,18 +1,19 @@
 {
   "network": "flow-evm-testnet",
   "chain_id": 545,
-  "deployed_at": "2026-05-25T16:51:08.254Z",
+  "deployed_at": "2026-05-26T04:33:14.592Z",
   "contract": "JanusToken",
-  "address": "0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D",
-  "deploy_tx": "01f053e10270f79c121b80fa93aafbff3148721e813ef597cded8a683853301b",
-  "explorer_tx": "https://evm-testnet.flowscan.io/tx/01f053e10270f79c121b80fa93aafbff3148721e813ef597cded8a683853301b",
+  "version": "0.2.0",
+  "address": "0xb12E600fFcde967210cFD81CF9f32bBB6e68a499",
+  "deploy_tx": "e477d1f0a6d61ad05aef86429b13e67c4cc07810925000f93b7c56d0e8505842",
+  "status": "SEALED",
+  "deployer_coa_path": "/storage/openjanusCOA",
   "deployer_flow": "0x28fef3d1d6a12800",
-  "deployer_coa": "0x0000000000000000000000027eb18dc34b9966fd",
   "dependencies": {
     "BabyJub": "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870",
-    "EncryptConsistencyVerifier": "0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C",
-    "DecryptOpenVerifier": "0x3bB139B5404fD6b152813bC3532367AAa096638b"
+    "EncryptConsistencyVerifier": "0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e",
+    "DecryptOpenVerifier": "0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc"
   },
-  "bytecode_size_bytes": 9786,
-  "deploy_method": "coa.deploy() via Cadence transaction"
+  "ceremony": "v0.2.0 Hermez + Flow VRF beacon",
+  "bytecode_size_bytes": 9675
 }

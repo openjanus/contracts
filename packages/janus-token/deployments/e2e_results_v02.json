@@ -1,0 +1,74 @@
+{
+  "start_time": "2026-05-26T04:43:16.341Z",
+  "tests": {
+    "register_alice": "ok",
+    "register_bob": "ok",
+    "register_carol": "ok",
+    "register_dave": "ok",
+    "register_eve": "ok",
+    "wrap_alice": "ok",
+    "wrap_carol": "ok",
+    "wrap_dave": "ok",
+    "homomorphic_accumulation": true,
+    "critical_onchain_42": {
+      "total": "42",
+      "preBalance": "0",
+      "increment": "42",
+      "pass": true
+    },
+    "bob_decrypt_proof": "ok",
+    "bob_offchain_verify": true,
+    "bob_onchain_verify": true,
+    "critical_privacy": {
+      "total": "42",
+      "expected": "42",
+      "pass": true
+    },
+    "fraud1_wrong_amount": "rejected",
+    "fraud2_wrong_privkey": "rejected",
+    "fraud3_out_of_range": "rejected",
+    "fraud4_oversized_value": "rejected",
+    "fraud5_finalize_no_pending": "verified_no_pending",
+    "rotation_commit": "ok",
+    "rotation_pending_recorded": true
+  },
+  "txHashes": {
+    "register_alice": "2db871e5e06466dc37ae4713fb593a162f6bf88d1796f96a34774e3fdc036645",
+    "register_bob": "a3a169dbbd4feebbd7468936c87854b9c5ad4510fe2af84995c7706d5c2a6071",
+    "register_carol": "3e45122bdf9a42da2ba6f45264f670143e07ab187907eb5a5269ca21230b95f5",
+    "register_dave": "86f4abf570c0641da13d00c0f151f366d30ec63c919d6f9290a4a7bda1780f28",
+    "register_eve": "b3b7c5185f346c0c8aa90e8fe8140d47c7de903568dc6d79ae2c396b738adee9",
+    "wrap_alice": "c385be0aa1f777efa2c0a1f3c9bd402f91871e91c38a7da35a6efd9f0f194c42",
+    "wrap_carol": "c417de2e99f12f7a9d8dc86c7a19bd88145259d0d2448b45c75011fb2c438a54",
+    "wrap_dave": "9f3166ec1a2058d00e3c8de5cffaf26657e4d1398986301db7612bc8423b05a4",
+    "commit_rotation": "7b0ac6ca85d02e58092bd96f8d1c2e3c3465cbf3ef9274bbb3a208cbb32ccec2"
+  },
+  "gasUsed": {},
+  "timings": {
+    "alice_prove_ms": 2244,
+    "bob_prove_ms": 533,
+    "bob_verify_ms": 17
+  },
+  "end_time": "2026-05-26T04:50:15.745Z",
+  "total_elapsed_seconds": "419.4",
+  "passed": 27,
+  "failed": 0,
+  "failList": [],
+  "addresses": {
+    "JanusToken": "0xb12E600fFcde967210cFD81CF9f32bBB6e68a499",
+    "JanusFlow_cadence": "0x28fef3d1d6a12800",
+    "EncryptConsistencyVerifier": "0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e",
+    "DecryptOpenVerifier": "0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc",
+    "BabyJub": "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
+  },
+  "privacy_verdict": "PASS",
+  "verdict": "GO",
+  "notes": [
+    "BSGS range [0, 2^20) for lab — production extends to [0, 2^48) with disk cache",
+    "Bob decrypts accumulated ciphertext to 42 without knowing individual amounts (10, 25, 7)",
+    "ZK proofs validate encryption consistency and decryption correctness",
+    "All fraud cases (wrong amount, wrong privkey, out-of-range, oversized value, premature rotation) correctly rejected",
+    "Per-user COA pattern verified — each user's COA is independent msg.sender",
+    "Pubkey rotation timelock enforced (1-hour on testnet)"
+  ]
+}

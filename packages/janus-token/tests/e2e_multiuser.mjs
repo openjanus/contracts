@@ -25,10 +25,12 @@ import * as snarkjs from "snarkjs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MODULE_ROOT = join(__dirname, "..");
 const SPIKE_ROOT = "/home/oydual3/cadence-crypto-lab/modules/zk/elgamal-babyjub-spike";
-const BUILD_DECRYPT = join(SPIKE_ROOT, "circuits/build/decrypt_open");
-const BUILD_ENCRYPT = join(SPIKE_ROOT, "circuits/build/encrypt_consistency");
+// v0.2.0: Use ceremony circuits (Hermez + Flow VRF beacon trusted setup)
+const CIRCUIT_PATH = process.env.CIRCUIT_PATH ?? "/tmp/ceremony-circuits";
+const BUILD_DECRYPT = join(CIRCUIT_PATH, "decrypt_open");
+const BUILD_ENCRYPT = join(CIRCUIT_PATH, "encrypt_consistency");
 const COA_CALL_TX = join(SPIKE_ROOT, "scripts/coa_call_raw.cdc");
-const RESULTS_FILE = join(MODULE_ROOT, "deployments/e2e_results.json");
+const RESULTS_FILE = join(MODULE_ROOT, "deployments/e2e_results_v02.json");
 const FLOW_ROOT = "/home/oydual3/cadence-crypto-lab";
 
 // ─── Load elgamal primitives from spike ────────────────────────────────────
@@ -37,11 +39,11 @@ const { deriveBabyJubKeypair, encrypt, decrypt, randomScalar, getBabyJub } =
 const { warmup } = await import(join(SPIKE_ROOT, "src/bsgs.mjs"));
 
 // ─── Network + contract addresses ─────────────────────────────────────────
-// openjanus canonical deployment (deployed 2026-05-25 at account 0x28fef3d1d6a12800)
+// openjanus v0.2.0 deployment (2026-05-26) — Hermez + Flow VRF beacon ceremony
 const RPC_URL            = "https://testnet.evm.nodes.onflow.org";
-const JANUS_V2_ADDR      = "0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D";
-const ENCRYPT_VERIF_ADDR = "0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C";
-const DECRYPT_VERIF_ADDR = "0x3bB139B5404fD6b152813bC3532367AAa096638b";
+const JANUS_V2_ADDR      = "0xb12E600fFcde967210cFD81CF9f32bBB6e68a499";
+const ENCRYPT_VERIF_ADDR = "0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e";
+const DECRYPT_VERIF_ADDR = "0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc";
 
 // ─── ABIs ──────────────────────────────────────────────────────────────────
 const JANUS_ABI = [
