@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [0.2.0] — 2026-05-26
+
+### Changed
+
+**Trusted setup ceremony — closes audit vuln/010**
+
+- `EncryptConsistencyVerifier` and `DecryptOpenVerifier` redeployed from
+  ceremony-backed zkeys: Hermez pot14 (200+ contributors) + Flow VRF beacon
+  (testnet block 323555648, hash `30f1f68eed7ea6e7b4964e798ff8a0e2b77e7ca073ed80ac44d39ddc5fb395e7`).
+- `JanusToken.sol` redeployed referencing new verifier addresses.
+- SHA256 encrypt zkey: `17ab9353f2966336bbf380549a47721ccce4283f20000380e18ecab763c3da16`
+- SHA256 decrypt zkey: `d87eda3b96f2eeab11f33583369519d041d25915cdbd49cedf41fd269b8e0745`
+
+**New v0.2.0 addresses (ceremony-backed):**
+- `JanusToken.sol`: `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499`
+- `EncryptConsistencyVerifier`: `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e`
+- `DecryptOpenVerifier`: `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc`
+
+**v0.1.0 addresses DEPRECATED** — single-contributor lab setup, superseded above.
+
+**E2E:** 27/27 PASS (419.4s, 2026-05-26) against new deployment + ceremony.
+
+**JanusFlow Cadence (unchanged, deferred):**
+On-chain `JanusFlow` at `0x28fef3d1d6a12800` remains legacy v1 (Pedersen).
+Protocol restriction on contract removal; redeploy planned v0.3.0.
+
+---
+
 ## [0.1.0] — 2026-05-25
 
 ### Added
