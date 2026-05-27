@@ -1,0 +1,68 @@
+{
+	"contracts": {
+		"JanusFT": {
+			"source": "./contracts/cadence/JanusFT.cdc",
+			"aliases": {
+				"testnet": "3c601a443c81e6cd"
+			}
+		}
+	},
+	"dependencies": {
+		"FlowToken": {
+			"source": "mainnet://1654653399040a61.FlowToken",
+			"hash": "",
+			"aliases": {
+				"emulator": "0ae53cb6e3f42a79",
+				"mainnet": "1654653399040a61",
+				"testnet": "7e60df042a9c0868"
+			}
+		},
+		"FungibleToken": {
+			"source": "mainnet://f233dcee88fe0abe.FungibleToken",
+			"hash": "",
+			"aliases": {
+				"emulator": "ee82856bf20e2aa6",
+				"mainnet": "f233dcee88fe0abe",
+				"testnet": "9a0766d93b6608b7"
+			}
+		}
+	},
+	"networks": {
+		"emulator": "127.0.0.1:3569",
+		"mainnet": "access.mainnet.nodes.onflow.org:9000",
+		"testnet": "access.devnet.nodes.onflow.org:9000"
+	},
+	"accounts": {
+		"bob": {
+			"address": "d807a3992d7be612",
+			"key": {
+				"type": "file",
+				"location": "/home/oydual3/.flow/testnet-bob.pkey"
+			}
+		},
+		"charlie": {
+			"address": "3c601a443c81e6cd",
+			"key": {
+				"type": "file",
+				"location": "/home/oydual3/.flow/testnet-charlie.pkey"
+			}
+		},
+		"openjanus-flow": {
+			"address": "bef3c77681c15397",
+			"key": {
+				"type": "file",
+				"location": "/home/oydual3/.flow/openjanus-flow.pkey"
+			}
+		}
+	},
+	"deployments": {
+		"testnet": {
+			"charlie": [
+				"JanusFT"
+			],
+			"openjanus-flow": [
+				"JanusFT"
+			]
+		}
+	}
+}
