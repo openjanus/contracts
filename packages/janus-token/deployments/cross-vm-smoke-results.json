@@ -1,0 +1,96 @@
+{
+  "date": "2026-05-27T04:58:59.292Z",
+  "layer": "cross-vm (Cadence JanusFlow router → EVM JanusFlow proxy)",
+  "cadence_router": "0x5dcbeb41055ec57e",
+  "evm_proxy": "0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078",
+  "steps": {
+    "wrap": {
+      "amount_flow": 3,
+      "amount_atto": "3000000000000000000",
+      "evm_totalLocked_delta": "3000000000000000000",
+      "cadence_event_count": 1,
+      "evm_wrapped_amount": "3000000000000000000",
+      "evm_tx": "0x9173027523c1cf504777ba63d33965c1ed7faa23f35d7c1b980dc8780607a3fa",
+      "flow_tx": "3566d2b32defc41abac1f1ac881de6ab45d26687ffae630086038aba777865f8"
+    },
+    "transfer_dave_to_eve": {
+      "amount_atto": "1000000000000000000",
+      "calldata_has_plain_amount": false,
+      "evm_event_fields": [
+        "from",
+        "to"
+      ],
+      "evm_event_leaks_amount": false,
+      "cadence_event_count": 1,
+      "evm_tx": "0x30f3fccbb2d6322161d4226227965adfa46482dfcc7ab0d922893bb331c9659e",
+      "flow_tx": "fb297869b853ac0cfbfc501bbc12c4194d7570f275791c44fa597ba489f0e02b"
+    },
+    "transfer_dave_to_bob": {
+      "amount_atto": "500000000000000000",
+      "calldata_has_plain_amount": false,
+      "evm_tx": "0x212745ff1c83de8ae0fd10fa3fbf568f25f5d92c5dcdc28043975c444a9af9dc",
+      "flow_tx": "981176eca8c3c682161bc89a4c7459ada7214123015b2a8c396f78138423b97c"
+    },
+    "unwrap_eve": {
+      "amount_atto": "1000000000000000000",
+      "coa_delta": "1000000000000000000",
+      "cadence_event_count": 1,
+      "evm_unwrapped_amount": "1000000000000000000",
+      "evm_tx": "0x7396645ea8c631cbf81ee7ab03f737291d01cc3941aa1ee5550f7661f985769c",
+      "flow_tx": "b00dae2f56ae401e89fc904095f45a7978c28a19b5b026ded087dd5126fa2e68"
+    }
+  },
+  "privacy_checks": {
+    "transfer_event_fields": [
+      "from",
+      "to"
+    ],
+    "transfer_event_leaks_amount": false,
+    "transfer_calldata_has_amount": false
+  },
+  "tx_hashes": {
+    "wrap_flow": "3566d2b32defc41abac1f1ac881de6ab45d26687ffae630086038aba777865f8",
+    "wrap_evm": "0x9173027523c1cf504777ba63d33965c1ed7faa23f35d7c1b980dc8780607a3fa",
+    "transfer_dave_to_eve_flow": "fb297869b853ac0cfbfc501bbc12c4194d7570f275791c44fa597ba489f0e02b",
+    "transfer_dave_to_eve_evm": "0x30f3fccbb2d6322161d4226227965adfa46482dfcc7ab0d922893bb331c9659e",
+    "transfer_dave_to_bob_flow": "981176eca8c3c682161bc89a4c7459ada7214123015b2a8c396f78138423b97c",
+    "transfer_dave_to_bob_evm": "0x212745ff1c83de8ae0fd10fa3fbf568f25f5d92c5dcdc28043975c444a9af9dc",
+    "unwrap_flow": "b00dae2f56ae401e89fc904095f45a7978c28a19b5b026ded087dd5126fa2e68",
+    "unwrap_evm": "0x7396645ea8c631cbf81ee7ab03f737291d01cc3941aa1ee5550f7661f985769c"
+  },
+  "assertions": {
+    "cadence_wrap_to_evm_wrap_atomic": true,
+    "evm_wrapped_event_amount_visible": "3000000000000000000",
+    "transfer_calldata_amount_hidden": true,
+    "transfer_event_amount_hidden": true,
+    "transfer_pool_unchanged": true,
+    "cadence_transfer_to_evm_transfer_atomic": true,
+    "cadence_unwrap_to_evm_unwrap_to_coa_receive_atomic": true
+  },
+  "cadence_router_totalLocked_mirror": "2.00000000",
+  "totalLocked_invariant": {
+    "evm_pool_initial_atto": "3000000000000000000",
+    "evm_pool_final_atto": "5000000000000000000",
+    "evm_delta_atto": "2000000000000000000",
+    "expected_delta_atto": "2000000000000000000",
+    "wrap_atto": "3000000000000000000",
+    "transfer_dave_to_eve_atto": "1000000000000000000",
+    "transfer_dave_to_bob_atto": "500000000000000000",
+    "unwrap_atto": "1000000000000000000",
+    "per_actor_balances_atto": {
+      "dave_remaining": "1500000000000000000",
+      "bob_remaining": "500000000000000000",
+      "eve_remaining": "0",
+      "sum_check_atto": "2000000000000000000"
+    }
+  },
+  "summary": {
+    "cadence_wrap_to_evm_wrap_atomic": true,
+    "evm_wrapped_amount_visible": true,
+    "cadence_transfer_to_evm_transfer_atomic": true,
+    "evm_confidential_transfer_event_hides_amount": true,
+    "cadence_unwrap_to_evm_unwrap_to_coa_receive_atomic": true,
+    "totalLocked_invariant_holds": true,
+    "verdict": "PASS - cross-VM atomicity holds and amount HIDDEN on shieldedTransfer (calldata + events)"
+  }
+}
