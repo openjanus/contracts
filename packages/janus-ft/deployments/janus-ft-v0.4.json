@@ -1,0 +1,54 @@
+{
+  "version": "0.4.0",
+  "date": "2026-05-27",
+  "network": "flow-cadence-testnet",
+  "contract_name": "JanusFT",
+  "canonical_deployment": {
+    "account": "0xbef3c77681c15397",
+    "account_alias": "openjanus-flow",
+    "import_path": "import JanusFT from 0xbef3c77681c15397",
+    "explorer": "https://contractbrowser.com/A.bef3c77681c15397.JanusFT",
+    "notes": "Canonical openjanus deployment. SDK + ai-tools reference this address."
+  },
+  "smoke_deployment": {
+    "account": "0x3c601a443c81e6cd",
+    "account_alias": "charlie",
+    "import_path": "import JanusFT from 0x3c601a443c81e6cd",
+    "purpose": "Used by scripts/smoke-janus-ft.mjs because the stub babyAddStub helper overflows once commitments accumulate across runs. Smoke needs a fresh-state account that can be reset via Admin.resetCommitmentsForTestingOnly() between runs."
+  },
+  "underlying_default": {
+    "vault_type_identifier": "A.7e60df042a9c0868.FlowToken.Vault",
+    "note": "Testnet FlowToken.Vault — configurable via Admin.setUnderlyingVaultType() to any FungibleToken vault type identifier"
+  },
+  "deploy_method": "flow accounts add-contract (Cadence 1.0)",
+  "deploy_tx_hashes": {
+    "canonical_initial_deploy": "n/a (flow CLI add-contract did not surface tx id; openjanus-flow sequence number bumped to 66 around 2026-05-27 07:31 UTC)",
+    "smoke_initial_deploy": "n/a (charlie deploy occurred around 2026-05-27 07:50 UTC)",
+    "canonical_update_post_admin_reset": "n/a (flow CLI update-contract; both accounts updated to add Admin.resetCommitmentsForTestingOnly)"
+  },
+  "contract_status": "NEW",
+  "lab_provenance": {
+    "source": "cadence-crypto-lab/modules/token/multi-token-spike/contracts/cadence/JanusFT.cdc",
+    "spike_deployment": "0x7599043aea001283 (testnet-claucondor; lab-only, do not use for prod)",
+    "ported_at": "2026-05-27",
+    "diff_from_lab": "Added Admin.resetCommitmentsForTestingOnly() so the same JanusFT instance can be smoke-tested repeatedly without contract removal (Flow testnet does not authorize contract removal)."
+  },
+  "limitations": {
+    "crypto": "babyAddStub + babyNegateStub are NOT cryptographically valid BabyJubJub point ops — they are placeholders so the lab can validate event/storage/calldata PRIVACY SHAPE without depending on cross-VM proof verification. With real Pedersen-shaped coordinates (each near the curve order p), accumulated stub state OVERFLOWS UInt256 after a couple of operations. Real soundness arrives in v0.5 when cross-VM verification via the EVM ConfidentialTransferVerifier lands and the stub helpers are replaced with COA calls to BabyJub.sol.",
+    "proof_verification": "amountProofBytes + proofBytes are NOT verified on-chain in this version — only their length > 0 is checked. The privacy properties under test are STRUCTURAL (what data appears on calldata, storage, events), independent of soundness.",
+    "registry_model": "The CommitmentRegistry MUST be on the signer's account (spike model — wrap_ft/unwrap_ft borrow it from /storage/janusFTRegistry on the signer). Multiple distinct accounts CAN hold commitments via shieldedTransfer (recipient just receives a commitment, no registry required on their side). The wrapper/unwrapper account is the registry holder.",
+    "unwrap_unverifiable": "Unwrap is INTENTIONALLY SKIPPED by scripts/smoke-janus-ft.mjs — it deterministically overflows the stub babyAddStub during totalSupplyCommitment debit. The lab spike (cadence-crypto-lab/.../multi-user-stress-ft.json#steps.unwrap) skipped it for the same reason. Real unwrap works end-to-end on the EVM side (see openjanus-contracts/packages/janus-token/deployments/cross-vm-smoke-results.json step 4)."
+  },
+  "transactions_provided": [
+    "transactions/setup_janus_ft_registry.cdc",
+    "transactions/wrap_ft.cdc",
+    "transactions/shielded_transfer_ft.cdc",
+    "transactions/unwrap_ft.cdc"
+  ],
+  "next_steps_v0_5": [
+    "Replace babyAdd/babyNegateStub with cross-VM calls to BabyJub.sol via COA",
+    "Replace amountProofBytes opaque accept with cross-VM call to ConfidentialTransferVerifier",
+    "Remove resetCommitmentsForTestingOnly admin once real BabyJub homomorphic state works",
+    "Provide an alternative registry model where the registry lives on the deployer account and users interact via capabilities (multi-user wraps without owning a registry resource)"
+  ]
+}
