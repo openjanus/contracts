@@ -1,43 +1,64 @@
 // SPDX-License-Identifier: MIT
 // EXPERIMENTAL — NOT AUDITED — DO NOT USE FOR PRODUCTION
 //
-// JanusToken.sol — ElGamal Accumulator-based confidential token (UUPS-upgradeable)
+// JanusToken.sol — Abstract base for openjanus confidential tokens (v0.3).
 //
-// Architecture: Exponential ElGamal on BabyJubJub
-//   C1 = r * G                         (randomness commitment)
-//   C2 = v * G + r * PK               (value commitment to recipient pubkey)
-//   Homomorphic: E(v1) + E(v2) = E(v1+v2) — slot accumulates tips
+// This is the *template* that defines the on-chain shape of every confidential
+// token in the openjanus stack:
 //
-// This is the core EVM contract for openjanus confidential tokens.
-// The Cadence layer (JanusFlow.cdc) wraps this contract for Flow-native UX.
+//   - Hidden per-account balance commitments (BabyJubJub Pedersen).
+//   - Hidden total-supply commitment (homomorphic sum of per-account commits).
+//   - Cleartext aggregate custody accounting (`totalLocked`) — VISIBLE BY DESIGN
+//     so observers can audit the size of the shielded pool.
+//   - A shielded transfer that hides amount on all channels (calldata, events,
+//     storage) gated by a Groth16 ConfidentialTransfer proof.
+//   - Abstract `_wrap` / `_unwrap` template-method hooks that concrete tokens
+//     (e.g. JanusFlow for native FLOW) implement to plug in the underlying
+//     asset's custody logic.
 //
-// Improvements over earlier prototypes:
-//   1. Per-sender nonce replay protection on confidentialTransfer()
-//   2. ZK proof gating on confidentialTransfer() via EncryptConsistencyVerifier
-//   3. ZK proof gating on unwrap() via DecryptOpenVerifier
-//   4. Pubkey rotation with 1-hour timelock (testnet) / 7-day (mainnet)
-//   5. resetSlot() test function REMOVED
-//   6. FLOW vault custody tracked per-user (locked[address])
-//   7. UUPS-upgradeable (ERC-1967 proxy)
-//   8. SCALE conversion between ZK whole-FLOW units and EVM attoFLOW (vuln 014 fix)
+// Concrete tokens MUST:
 //
-// Trusted setup note:
-//   v0.2.0 Hermez ceremony + Flow VRF beacon contribution.
-//   DO NOT ship to mainnet without an independent ceremony.
+//   - Implement `_wrap(amount, txCommit, amountProof)` to take custody of
+//     `amount` of the underlying asset and bind it to `txCommit` via the
+//     AmountDiscloseVerifier.
+//   - Implement `_unwrap(claimedAmount, recipient, txCommit, amountProof,
+//     transferPublicInputs, transferProof)` to release `claimedAmount` of the
+//     underlying asset to `recipient` after verifying both proofs.
+//   - Call `_acceptShieldedCredit(account, txCommit)` from inside `_wrap` after
+//     verifying the amount-disclose proof and (optionally) updating custody.
+//   - Call `_processShieldedDebit(account, txCommit, transferPublicInputs)`
+//     from inside `_unwrap` after verifying both proofs.
 //
-// Security properties:
-//   - IND-CPA under DDH on BabyJubJub
-//   - Sender-recipient relationship visible on-chain by design
-//   - Wrap/unwrap amounts visible via EVM events (unavoidable)
-//   - Recipient learns total only, not per-sender amounts
+// Cryptographic dependencies (deployed primitive addresses, set in `__JanusToken_init`):
+//
+//   - BabyJub.sol                  — twisted Edwards point arithmetic.
+//   - ConfidentialTransferVerifier — Groth16 verifier for the v2 transfer circuit.
+//   - AmountDiscloseVerifier       — Groth16 verifier binding a Pedersen commit
+//                                    to a PUBLIC scalar amount.
+//
+// Storage layout:
+//
+//   slot 0 .. 49 (UUPS + Ownable) — managed by OpenZeppelin upgradeable mixins.
+//   slot 50      — IBabyJub babyJub
+//   slot 51      — IConfidentialTransferVerifier transferVerifier
+//   slot 52      — IAmountDiscloseVerifier        amountDiscloseVerifier
+//   slot 53..    — mapping(address => Point) commitments
+//                 Point totalSupplyCommitment
+//                 uint256 totalLocked
+//   slot N + __gap[40]  — reserved for future state.
+//
+// Concrete subclasses MUST NOT reorder existing storage or remove __gap entries
+// without coordinating a synchronized storage migration.
 
 pragma solidity ^0.8.20;
 
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable}      from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {OwnableUpgradeable}   from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Initializable}        from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-// ─── Interfaces ────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// External verifier / curve interfaces (shape pinned by the lab deployments)
+// ---------------------------------------------------------------------------
 
 interface IBabyJub {
     function babyAdd(
@@ -45,13 +66,10 @@ interface IBabyJub {
         uint256 x2, uint256 y2
     ) external view returns (uint256 x3, uint256 y3);
 
-    function isOnCurve(uint256 x, uint256 y) external pure returns (bool);
     function negate(uint256 x, uint256 y) external pure returns (uint256 nx, uint256 ny);
-    function identity() external pure returns (uint256 x, uint256 y);
 }
 
-interface IEncryptVerifier {
-    // public signals: [recipient_pubkey[2], C1[2], C2[2]] = 6 signals
+interface IConfidentialTransferVerifier {
     function verifyProof(
         uint[2] calldata _pA,
         uint[2][2] calldata _pB,
@@ -60,381 +78,269 @@ interface IEncryptVerifier {
     ) external view returns (bool);
 }
 
-interface IDecryptVerifier {
-    // public signals: [pubkey[2], C1[2], C2[2], claimed_value] = 7 signals
+interface IAmountDiscloseVerifier {
     function verifyProof(
         uint[2] calldata _pA,
         uint[2][2] calldata _pB,
         uint[2] calldata _pC,
-        uint[7] calldata _pubSignals
+        uint[3] calldata _pubSignals
     ) external view returns (bool);
 }
 
-// ─── Contract ──────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// JanusToken — abstract base
+// ---------------------------------------------------------------------------
 
-contract JanusToken is Initializable, UUPSUpgradeable, OwnableUpgradeable {
-
-    // ─── Constants ──────────────────────────────────────────────────────────
-    uint256 public constant P =
-        21888242871839275222246405745257275088548364400416034343698204186575808495617;
-
-    /// Timelock duration: 1 hour for testnet, update to 7 days for mainnet
-    uint256 public constant PUBKEY_ROTATION_DELAY = 1 hours;
-
-    /// Scale factor between ZK "whole-FLOW units" (small ints, range [0, 2^48))
-    /// and EVM wei/attoFLOW (1 FLOW = 1e18 attoFLOW).
-    ///
-    /// Fix for vulnerability 014: the decrypt_open circuit emits claimed_value in
-    /// whole-FLOW units (forced by BSGS feasibility on BabyJubJub). The EVM payable
-    /// path operates in wei. SCALE bridges the two so a user wrapping 1 FLOW
-    /// recovers ~1 FLOW on unwrap, not 1 wei.
-    uint256 public constant SCALE = 1e18;
-
-    // ─── Types ───────────────────────────────────────────────────────────────
+abstract contract JanusToken is
+    Initializable,
+    UUPSUpgradeable,
+    OwnableUpgradeable
+{
+    // -----------------------------------------------------------------------
+    // Types
+    // -----------------------------------------------------------------------
 
     struct Point {
         uint256 x;
         uint256 y;
     }
 
-    /// @dev ElGamal ciphertext as two BabyJubJub points
-    struct Ciphertext {
-        uint256 C1x;
-        uint256 C1y;
-        uint256 C2x;
-        uint256 C2y;
-    }
+    // -----------------------------------------------------------------------
+    // Storage — see file-header note about slot stability
+    // -----------------------------------------------------------------------
 
-    // ─── State (proxy storage) ───────────────────────────────────────────────
+    IBabyJub                       public babyJub;
+    IConfidentialTransferVerifier  public transferVerifier;
+    IAmountDiscloseVerifier        public amountDiscloseVerifier;
 
-    // Address dependencies — must be in storage (no immutable in upgradeables)
-    IBabyJub   public babyJub;
-    IEncryptVerifier public encryptVerifier;
-    IDecryptVerifier public decryptVerifier;
+    /// Hidden per-account balance commitment (BabyJubJub point). Identity
+    /// element (0, 1) means zero balance; uninitialised storage (0, 0) is
+    /// treated as identity by `_effectiveCommitment`.
+    mapping(address => Point) public commitments;
 
-    // Active pubkey registry
-    mapping(address => Point)   public pubkey;
-    mapping(address => bool)    public hasPubkey;
-    mapping(address => uint256) public pubkeyRegisteredAt;
+    /// Homomorphic sum of all `commitments[account]` — invariant:
+    /// `totalSupplyCommitment == sum(commitments[a] for all a)`.
+    Point public totalSupplyCommitment;
 
-    // Pending pubkey rotation
-    mapping(address => Point)   public pendingPubkey;
-    mapping(address => uint256) public pendingPubkeyAvailableAt; // 0 = no pending
+    /// Aggregate cleartext custody pool. Tracks the underlying asset locked
+    /// in the contract across all users. VISIBLE BY DESIGN — boundary
+    /// accounting that an external observer can audit at any time.
+    uint256 public totalLocked;
 
-    // Accumulator slots — one slot per recipient
-    mapping(address => Ciphertext) public slot;
-
-    // Replay protection: per-sender nonce (must increment each call)
-    mapping(address => uint256) public nonce;
-
-    // FLOW custody: attoFLOW locked per user
-    mapping(address => uint256) public locked;
-
-    /// Reserved storage slots for future upgrades.
-    /// Decrement when adding new state vars to keep storage layout stable.
+    /// Reserved storage for future state vars. Decrement when adding fields
+    /// to keep layout stable across upgrades.
     uint256[40] private __gap;
 
-    // ─── Events ──────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
+    // Events
+    // -----------------------------------------------------------------------
 
-    event PubkeyRegistered(address indexed account, uint256 x, uint256 y);
-    event PubkeyRotationCommitted(address indexed account, uint256 newX, uint256 newY, uint256 availableAt);
-    event PubkeyRotationFinalized(address indexed account, uint256 newX, uint256 newY);
-    event Wrapped(address indexed from, address indexed to, uint256 amountAttoFlow);
+    /// VISIBLE BY DESIGN — boundary leak: discloses the wrap amount.
+    event Wrapped(address indexed user, uint256 amount);
+
+    /// VISIBLE BY DESIGN — boundary leak: discloses the unwrap amount and
+    /// recipient.
+    event Unwrapped(address indexed user, address indexed recipient, uint256 amount);
+
+    /// HIDDEN — emits no amount data, matching the ERC-7984 confidential
+    /// transfer event.
     event ConfidentialTransfer(address indexed from, address indexed to);
-    event Unwrapped(address indexed account, address indexed recipient, uint256 amountAttoFlow);
 
-    // ─── Constructor / Initializer ───────────────────────────────────────────
+    // -----------------------------------------------------------------------
+    // Initializer
+    // -----------------------------------------------------------------------
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    /// @notice Initialize the proxy with verifier addresses and owner.
-    /// @dev Called once via the ERC1967Proxy after deployment.
-    function initialize(
+    /// @notice One-shot initializer for the abstract base.
+    /// Concrete tokens MUST call this from their own `initialize`.
+    function __JanusToken_init(
         address _babyJub,
-        address _encryptVerifier,
-        address _decryptVerifier,
+        address _transferVerifier,
+        address _amountDiscloseVerifier,
         address _owner
-    ) external initializer {
-        require(_babyJub != address(0), "JanusToken: zero babyJub");
-        require(_encryptVerifier != address(0), "JanusToken: zero encryptVerifier");
-        require(_decryptVerifier != address(0), "JanusToken: zero decryptVerifier");
-        require(_owner != address(0), "JanusToken: zero owner");
+    ) internal onlyInitializing {
+        require(_babyJub                != address(0), "JanusToken: zero babyJub");
+        require(_transferVerifier       != address(0), "JanusToken: zero transferVerifier");
+        require(_amountDiscloseVerifier != address(0), "JanusToken: zero amountDiscloseVerifier");
+        require(_owner                  != address(0), "JanusToken: zero owner");
 
         __Ownable_init(_owner);
         __UUPSUpgradeable_init();
 
-        babyJub = IBabyJub(_babyJub);
-        encryptVerifier = IEncryptVerifier(_encryptVerifier);
-        decryptVerifier = IDecryptVerifier(_decryptVerifier);
+        babyJub                = IBabyJub(_babyJub);
+        transferVerifier       = IConfidentialTransferVerifier(_transferVerifier);
+        amountDiscloseVerifier = IAmountDiscloseVerifier(_amountDiscloseVerifier);
+
+        totalSupplyCommitment = Point({ x: 0, y: 1 });
     }
 
-    /// @dev UUPS authorization: only owner can upgrade implementation.
+    /// @dev UUPS upgrade authorization — owner only.
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    // ─── Pubkey management ────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
+    // View helpers
+    // -----------------------------------------------------------------------
 
-    /**
-     * @notice Register a BabyJubJub public key for msg.sender.
-     */
-    function registerPubkey(uint256 x, uint256 y) external {
-        require(!hasPubkey[msg.sender], "JanusToken: pubkey already registered, use rotatePubkey");
-        _validatePubkey(x, y);
-
-        pubkey[msg.sender] = Point(x, y);
-        hasPubkey[msg.sender] = true;
-        pubkeyRegisteredAt[msg.sender] = block.timestamp;
-
-        // Initialize slot to identity (C1=(0,1), C2=(0,1))
-        slot[msg.sender] = Ciphertext(0, 1, 0, 1);
-
-        emit PubkeyRegistered(msg.sender, x, y);
+    function balanceOfCommitment(address account) external view returns (Point memory) {
+        return _effectiveCommitment(account);
     }
 
-    function commitPubkeyRotation(uint256 newX, uint256 newY) external {
-        require(hasPubkey[msg.sender], "JanusToken: not registered");
-        _validatePubkey(newX, newY);
+    function balanceOfCommitmentXY(address account) external view returns (uint256 x, uint256 y) {
+        Point memory p = _effectiveCommitment(account);
+        return (p.x, p.y);
+    }
+
+    function _effectiveCommitment(address account) internal view returns (Point memory) {
+        Point memory c = commitments[account];
+        if (c.x == 0 && c.y == 0) {
+            return Point({ x: 0, y: 1 });
+        }
+        return c;
+    }
+
+    // -----------------------------------------------------------------------
+    // shieldedTransfer — concrete; amount HIDDEN on calldata, events, storage
+    // -----------------------------------------------------------------------
+
+    /// @notice Move a hidden amount from `msg.sender` to `to`.
+    /// @dev    Public inputs layout (uint256[6]):
+    ///         [0..1] C_old   — sender's current commitment (must match storage)
+    ///         [2..3] C_tx    — Pedersen commit of the transferred amount
+    ///         [4..5] C_new   — sender's new commitment (C_old − C_tx)
+    function shieldedTransfer(
+        address to,
+        uint256[6] calldata publicInputs,
+        uint256[8] calldata proof
+    ) external {
+        require(to != address(0),  "JanusToken: transfer to zero address");
+        require(to != msg.sender,  "JanusToken: cannot transfer to self");
+
+        Point memory senderCommit = _effectiveCommitment(msg.sender);
         require(
-            newX != pubkey[msg.sender].x || newY != pubkey[msg.sender].y,
-            "JanusToken: new pubkey same as current"
+            publicInputs[0] == senderCommit.x && publicInputs[1] == senderCommit.y,
+            "JanusToken: C_old mismatch"
         );
 
-        uint256 availableAt = block.timestamp + PUBKEY_ROTATION_DELAY;
-        pendingPubkey[msg.sender] = Point(newX, newY);
-        pendingPubkeyAvailableAt[msg.sender] = availableAt;
+        require(
+            _verifyTransferProof(publicInputs, proof),
+            "JanusToken: invalid transfer proof"
+        );
 
-        emit PubkeyRotationCommitted(msg.sender, newX, newY, availableAt);
-    }
+        // Sender commitment becomes C_new
+        commitments[msg.sender] = Point({ x: publicInputs[4], y: publicInputs[5] });
 
-    function finalizePubkeyRotation() external {
-        require(hasPubkey[msg.sender], "JanusToken: not registered");
-        uint256 availableAt = pendingPubkeyAvailableAt[msg.sender];
-        require(availableAt != 0, "JanusToken: no pending rotation");
-        require(block.timestamp >= availableAt, "JanusToken: timelock not elapsed");
-
-        Point memory newPk = pendingPubkey[msg.sender];
-        pubkey[msg.sender] = newPk;
-
-        delete pendingPubkey[msg.sender];
-        delete pendingPubkeyAvailableAt[msg.sender];
-
-        emit PubkeyRotationFinalized(msg.sender, newPk.x, newPk.y);
-    }
-
-    // ─── Core operations ──────────────────────────────────────────────────────
-
-    /**
-     * @notice Wrap whole FLOW into a confidential slot for recipient.
-     * @dev msg.value MUST be a whole multiple of SCALE (1 FLOW = 1e18 wei).
-     *      The ZK ciphertext encodes msg.value / SCALE (small int the circuit can handle).
-     */
-    function wrap(
-        address to,
-        Ciphertext calldata ct,
-        uint256 senderNonce,
-        uint[6] calldata publicInputs,
-        uint[8] calldata encryptProof
-    ) external payable {
-        require(hasPubkey[to], "JanusToken: recipient has no pubkey");
-        require(msg.value > 0, "JanusToken: must wrap nonzero amount");
-        require(msg.value % SCALE == 0, "JanusToken: msg.value must be whole FLOW");
-
-        require(senderNonce == nonce[msg.sender], "JanusToken: invalid nonce");
-        nonce[msg.sender]++;
-
-        _validateCiphertext(ct);
-        _verifyEncryptProof(to, ct, publicInputs, encryptProof);
-
-        locked[to] += msg.value;
-        _accumulate(to, ct);
-
-        emit Wrapped(msg.sender, to, msg.value);
-    }
-
-    /**
-     * @notice Confidential transfer of locked-FLOW custody between users.
-     * @param transferUnits  Amount in whole-FLOW units (NOT wei). Converted via SCALE.
-     */
-    function confidentialTransfer(
-        address to,
-        Ciphertext calldata ct,
-        uint256 transferUnits,
-        uint256 senderNonce,
-        uint[6] calldata publicInputs,
-        uint[8] calldata encryptProof
-    ) external {
-        require(hasPubkey[msg.sender], "JanusToken: sender not registered");
-        require(hasPubkey[to], "JanusToken: recipient not registered");
-        require(transferUnits > 0, "JanusToken: zero transfer");
-
-        uint256 transferAtto = transferUnits * SCALE;
-        require(locked[msg.sender] >= transferAtto, "JanusToken: insufficient locked balance");
-
-        require(senderNonce == nonce[msg.sender], "JanusToken: invalid nonce");
-        nonce[msg.sender]++;
-
-        _validateCiphertext(ct);
-        _verifyEncryptProof(to, ct, publicInputs, encryptProof);
-
-        locked[msg.sender] -= transferAtto;
-        locked[to] += transferAtto;
-
-        _accumulate(to, ct);
+        // Recipient commitment += C_tx (homomorphic)
+        Point memory recvCommit = _effectiveCommitment(to);
+        (uint256 rx, uint256 ry) = babyJub.babyAdd(
+            recvCommit.x, recvCommit.y,
+            publicInputs[2], publicInputs[3]
+        );
+        commitments[to] = Point({ x: rx, y: ry });
 
         emit ConfidentialTransfer(msg.sender, to);
     }
 
-    /**
-     * @notice Unwrap — prove knowledge of decryption + release FLOW to recipient.
-     * @dev VULN 014 FIX: claimedUnits is the whole-FLOW value the ZK circuit emits.
-     *      We multiply by SCALE to get the wei amount to send / deduct.
-     *      The ZK proof's claimed_value MUST equal claimedUnits (whole-FLOW units),
-     *      consistent with the circuit's small-int range.
-     *
-     * @param claimedUnits  Claimed slot total in whole FLOW (matches publicInputs[6])
-     * @param recipient     Address to receive the unwrapped FLOW
-     * @param publicInputs  7 public inputs for the decrypt_open circuit
-     * @param decryptProof  Groth16 proof packed as uint[8]
-     */
-    function unwrap(
-        uint256 claimedUnits,
+    // -----------------------------------------------------------------------
+    // Abstract template-method hooks for wrap/unwrap
+    //
+    // Concrete tokens override these to take/release custody of the
+    // underlying asset (native FLOW, ERC-20, etc.). The shielded credit /
+    // debit accounting is provided by `_acceptShieldedCredit` and
+    // `_processShieldedDebit` below — concrete impls call them once they
+    // have verified the relevant proofs.
+    // -----------------------------------------------------------------------
+
+    function _wrap(
+        uint256 amount,
+        uint256[2] calldata txCommit,
+        uint256[8] calldata amountProof
+    ) internal virtual;
+
+    function _unwrap(
+        uint256 claimedAmount,
         address payable recipient,
-        uint[7] calldata publicInputs,
-        uint[8] calldata decryptProof
-    ) external {
-        require(hasPubkey[msg.sender], "JanusToken: not registered");
-        require(claimedUnits > 0, "JanusToken: zero amount");
+        uint256[2] calldata txCommit,
+        uint256[8] calldata amountProof,
+        uint256[6] calldata transferPublicInputs,
+        uint256[8] calldata transferProof
+    ) internal virtual;
 
-        // Proof check: claimed_value (small int from circuit) == claimedUnits
-        require(
-            publicInputs[6] == claimedUnits,
-            "JanusToken: claimed_value in proof must match units"
-        );
+    // -----------------------------------------------------------------------
+    // Internal helpers — proof verification + commitment book-keeping
+    // -----------------------------------------------------------------------
 
-        uint256 amountAtto = claimedUnits * SCALE;
-        require(locked[msg.sender] >= amountAtto, "JanusToken: amount exceeds locked balance");
-
-        _verifyDecryptProof(msg.sender, publicInputs, decryptProof);
-
-        locked[msg.sender] -= amountAtto;
-        slot[msg.sender] = Ciphertext(0, 1, 0, 1);
-
-        (bool ok, ) = recipient.call{value: amountAtto}("");
-        require(ok, "JanusToken: FLOW transfer failed");
-
-        emit Unwrapped(msg.sender, recipient, amountAtto);
-    }
-
-    // ─── View functions ───────────────────────────────────────────────────────
-
-    function slotOf(address user) external view returns (Ciphertext memory) {
-        return slot[user];
-    }
-
-    function pubkeyOf(address user) external view returns (uint256 x, uint256 y) {
-        require(hasPubkey[user], "JanusToken: no pubkey registered");
-        return (pubkey[user].x, pubkey[user].y);
-    }
-
-    function pendingRotationOf(address user)
-        external
-        view
-        returns (uint256 newX, uint256 newY, uint256 availableAt)
-    {
-        return (
-            pendingPubkey[user].x,
-            pendingPubkey[user].y,
-            pendingPubkeyAvailableAt[user]
+    function _verifyAmountDisclose(
+        uint256 claimedAmount,
+        uint256[2] calldata commit,
+        uint256[8] calldata proof
+    ) internal view returns (bool) {
+        return amountDiscloseVerifier.verifyProof(
+            [proof[0], proof[1]],
+            [[proof[2], proof[3]], [proof[4], proof[5]]],
+            [proof[6], proof[7]],
+            [claimedAmount, commit[0], commit[1]]
         );
     }
 
-    // ─── Internal helpers ─────────────────────────────────────────────────────
-
-    function _validatePubkey(uint256 x, uint256 y) internal view {
-        require(x < P && y < P, "JanusToken: pubkey coord out of field");
-        require(!(x == 0 && y == 1), "JanusToken: pubkey cannot be identity");
-        require(babyJub.isOnCurve(x, y), "JanusToken: pubkey not on BabyJub curve");
+    function _verifyTransferProof(
+        uint256[6] calldata publicInputs,
+        uint256[8] calldata proof
+    ) internal view returns (bool) {
+        return transferVerifier.verifyProof(
+            [proof[0], proof[1]],
+            [[proof[2], proof[3]], [proof[4], proof[5]]],
+            [proof[6], proof[7]],
+            publicInputs
+        );
     }
 
-    function _validateCiphertext(Ciphertext calldata ct) internal view {
-        require(ct.C1x < P && ct.C1y < P && ct.C2x < P && ct.C2y < P,
-            "JanusToken: ciphertext coords out of field");
-        require(babyJub.isOnCurve(ct.C1x, ct.C1y), "JanusToken: C1 not on curve");
-        require(babyJub.isOnCurve(ct.C2x, ct.C2y), "JanusToken: C2 not on curve");
+    /// @dev Credit `account` with the commitment `txCommit` after an
+    /// `_wrap` flow has verified the amount-disclose proof. Updates the
+    /// per-account commitment AND the total-supply commitment homomorphically.
+    function _acceptShieldedCredit(
+        address account,
+        uint256[2] calldata txCommit
+    ) internal {
+        Point memory current = _effectiveCommitment(account);
+        (uint256 nx, uint256 ny) = babyJub.babyAdd(
+            current.x, current.y,
+            txCommit[0], txCommit[1]
+        );
+        commitments[account] = Point({ x: nx, y: ny });
+
+        (uint256 sx, uint256 sy) = babyJub.babyAdd(
+            totalSupplyCommitment.x, totalSupplyCommitment.y,
+            txCommit[0], txCommit[1]
+        );
+        totalSupplyCommitment = Point({ x: sx, y: sy });
     }
 
-    function _accumulate(address to, Ciphertext calldata ct) internal {
-        Ciphertext storage cur = slot[to];
-        (uint256 newC1x, uint256 newC1y) = babyJub.babyAdd(
-            cur.C1x, cur.C1y,
-            ct.C1x, ct.C1y
+    /// @dev Debit `account` of the commitment encoded by the verified
+    /// transfer-proof bundle. Caller MUST have already verified the
+    /// AmountDisclose proof, the transfer proof, AND the consistency
+    /// invariants between them (`C_old == account's commitment`,
+    /// `C_tx == txCommit`).
+    function _processShieldedDebit(
+        address account,
+        uint256[2] calldata txCommit,
+        uint256[6] calldata transferPublicInputs
+    ) internal {
+        // Account → C_new
+        commitments[account] = Point({
+            x: transferPublicInputs[4],
+            y: transferPublicInputs[5]
+        });
+
+        // totalSupplyCommitment -= txCommit  (== add the negation)
+        (uint256 negX, uint256 negY) = babyJub.negate(txCommit[0], txCommit[1]);
+        (uint256 sx, uint256 sy) = babyJub.babyAdd(
+            totalSupplyCommitment.x, totalSupplyCommitment.y,
+            negX, negY
         );
-        (uint256 newC2x, uint256 newC2y) = babyJub.babyAdd(
-            cur.C2x, cur.C2y,
-            ct.C2x, ct.C2y
-        );
-        slot[to] = Ciphertext(newC1x, newC1y, newC2x, newC2y);
+        totalSupplyCommitment = Point({ x: sx, y: sy });
     }
-
-    function _verifyEncryptProof(
-        address to,
-        Ciphertext calldata ct,
-        uint[6] calldata publicInputs,
-        uint[8] calldata encryptProof
-    ) internal view {
-        require(
-            publicInputs[0] == pubkey[to].x && publicInputs[1] == pubkey[to].y,
-            "JanusToken: proof pubkey mismatch"
-        );
-        require(
-            publicInputs[2] == ct.C1x && publicInputs[3] == ct.C1y,
-            "JanusToken: proof C1 mismatch"
-        );
-        require(
-            publicInputs[4] == ct.C2x && publicInputs[5] == ct.C2y,
-            "JanusToken: proof C2 mismatch"
-        );
-
-        uint[2] memory pA = [encryptProof[0], encryptProof[1]];
-        uint[2][2] memory pB = [[encryptProof[2], encryptProof[3]], [encryptProof[4], encryptProof[5]]];
-        uint[2] memory pC = [encryptProof[6], encryptProof[7]];
-
-        bool valid = encryptVerifier.verifyProof(pA, pB, pC, publicInputs);
-        require(valid, "JanusToken: encrypt proof invalid");
-    }
-
-    function _verifyDecryptProof(
-        address caller,
-        uint[7] calldata publicInputs,
-        uint[8] calldata decryptProof
-    ) internal view {
-        Ciphertext storage cur = slot[caller];
-        Point storage pk = pubkey[caller];
-
-        require(
-            publicInputs[0] == pk.x && publicInputs[1] == pk.y,
-            "JanusToken: decrypt proof pubkey mismatch"
-        );
-        require(
-            publicInputs[2] == cur.C1x && publicInputs[3] == cur.C1y,
-            "JanusToken: decrypt proof C1 mismatch"
-        );
-        require(
-            publicInputs[4] == cur.C2x && publicInputs[5] == cur.C2y,
-            "JanusToken: decrypt proof C2 mismatch"
-        );
-
-        uint[2] memory pA = [decryptProof[0], decryptProof[1]];
-        uint[2][2] memory pB = [[decryptProof[2], decryptProof[3]], [decryptProof[4], decryptProof[5]]];
-        uint[2] memory pC = [decryptProof[6], decryptProof[7]];
-
-        bool valid = decryptVerifier.verifyProof(pA, pB, pC, publicInputs);
-        require(valid, "JanusToken: decrypt proof invalid");
-    }
-
-    // ─── Fallback ─────────────────────────────────────────────────────────────
-
-    receive() external payable {}
 }
