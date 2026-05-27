@@ -128,6 +128,13 @@ access(all) contract JanusFlow {
     access(all) event ImplSwapped(oldVersion: String, newVersion: String)
     access(all) event ImplSwapCancelled()
 
+    /// TESTNET-ONLY admin reset of a stuck commitment slot on the EVM proxy.
+    /// PRIVACY-BREAKING — see comments above `adminResetSlot` below.
+    access(all) event AdminSlotReset(
+        target: Address,
+        targetEVMHex: String
+    )
+
     // ─── Public User Functions ────────────────────────────────────────────────────
 
     /// Wrap `vault.balance` FLOW into a hidden commitment on the EVM JanusFlow
@@ -365,6 +372,90 @@ access(all) contract JanusFlow {
             JanusFlow.pendingImplUnlockAt = 0.0
             emit ImplSwapCancelled()
         }
+    }
+
+    // ─── adminResetSlot — TESTNET-ONLY commitment recovery ───────────────────────
+    //
+    // PRIVACY-BREAKING. Routes through the EVM JanusFlow proxy's
+    // `adminResetSlot(address)` function (which is itself chainid-pinned to
+    // Flow EVM testnet 545 and onlyOwner). The signer of the Cadence tx must:
+    //   1. own the AdminResource at /storage/janusFlowAdmin (so they're the
+    //      Cadence-side admin); AND
+    //   2. their COA at /storage/evm must be the EVM owner of the proxy (so
+    //      the EVM-side onlyOwner check passes).
+    //
+    // These two conditions are satisfied by exactly one account on testnet:
+    // openjanus-flow (0xbef3c77681c15397) whose COA is
+    // 0x...022f6b30af48a94787 — the proxy owner.
+    //
+    // Resolves `target` (a Cadence address) to the target's COA EVM address by
+    // reading the public capability at /public/evm on the target account, then
+    // emits AdminSlotReset for off-chain indexers.
+
+    access(all) fun adminResetSlot(
+        signer: auth(BorrowValue) &Account,
+        target: Address
+    ) {
+        // The real admin gate is on the EVM side:
+        //   * proxy.adminResetSlot has `onlyOwner` (proxy owner = signer's
+        //     COA = 0x...022f6b30af48a94787);
+        //   * the EVM impl ALSO checks `block.chainid == 545`, making this
+        //     function inert on any chain except Flow EVM testnet.
+        //
+        // A non-owner signer's COA call will revert with
+        // OwnableUnauthorizedAccount and roll back the whole Cadence
+        // transaction atomically, so this function is safe to expose as
+        // `access(all)`.
+        //
+        // We do NOT borrow the JanusFlow AdminResource here because that
+        // resource lives at 0x5dcbeb41055ec57e (the Cadence contract
+        // deployer) while the EVM proxy owner is openjanus-flow's COA at
+        // 0xbef3c77681c15397 — two different Cadence accounts. Requiring
+        // both would force a 2-signer transaction for every reset; relying
+        // on EVM-side onlyOwner is simpler and equivalently secure given the
+        // EVM proxy is the authoritative source of truth for the
+        // commitments mapping.
+
+        // Resolve target Cadence account → COA EVM address via public capability.
+        let targetAcct = getAccount(target)
+        let targetCOARef = targetAcct.capabilities
+            .borrow<&EVM.CadenceOwnedAccount>(/public/evm)
+            ?? panic("JanusFlow.adminResetSlot: target account has no published COA at /public/evm")
+        let targetEVM = targetCOARef.address()
+        let targetEVMHex = targetEVM.toString()
+
+        // Build calldata for EVM `adminResetSlot(address)`:
+        //   selector 0xa8e50826 || abi.encode(address)
+        // EVM addresses are 20 bytes; ABI encoding pads them to 32 bytes
+        // (left-pad with 12 zero bytes).
+        var calldata: [UInt8] = [0xa8 as UInt8, 0xe5 as UInt8, 0x08 as UInt8, 0x26 as UInt8]
+        // 12 zero bytes of left-padding
+        var padIdx = 0
+        while padIdx < 12 {
+            calldata.append(0 as UInt8)
+            padIdx = padIdx + 1
+        }
+        // 20 bytes of the EVM address
+        for b in targetEVM.bytes {
+            calldata.append(b)
+        }
+
+        let signerCOA = signer.storage
+            .borrow<auth(EVM.Call) &EVM.CadenceOwnedAccount>(from: /storage/evm)
+            ?? panic("JanusFlow.adminResetSlot: signer has no COA at /storage/evm")
+        let target_evm = self._getEVMTarget()
+        let result = signerCOA.call(
+            to: target_evm,
+            data: calldata,
+            gasLimit: 200_000,
+            value: EVM.Balance(attoflow: 0)
+        )
+        assert(
+            result.status == EVM.Status.successful,
+            message: "JanusFlow.adminResetSlot EVM call failed: ".concat(result.errorMessage)
+        )
+
+        emit AdminSlotReset(target: target, targetEVMHex: targetEVMHex)
     }
 
     // ─── View Functions ──────────────────────────────────────────────────────────
