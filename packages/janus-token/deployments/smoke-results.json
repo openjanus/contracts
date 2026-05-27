@@ -1,0 +1,64 @@
+{
+  "date": "2026-05-27T04:17:55.475Z",
+  "proxy": "0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078",
+  "steps": {
+    "wrap": {
+      "amount_flow": 5,
+      "amount_atto": "5000000000000000000",
+      "totalLocked_delta": "5000000000000000000",
+      "wrapped_event_amount": "5000000000000000000",
+      "evm_tx": "0xc563fe52a23f5e9f84ff7bbec8ff82f6bf341affb670fe6bd9eff5202a35b418"
+    },
+    "transfer_alice_to_charlie": {
+      "amount_atto": "2000000000000000000",
+      "evm_tx": "0x9c705f73ee8fb8561a521326961c627d1ada7a775a872ec7d8deb41260b574bf"
+    },
+    "transfer_alice_to_bob": {
+      "amount_atto": "1000000000000000000",
+      "calldata_has_amount": false,
+      "evm_tx": "0x294e1b9d7004181a37b6b35885d4cb89d4545f52420ee7893b707d8017d9d59d"
+    },
+    "unwrap_charlie": {
+      "amount_atto": "2000000000000000000",
+      "coa_delta": "2000000000000000000",
+      "unwrapped_event_amount": "2000000000000000000",
+      "evm_tx": "0x6f4115ad5cf989faeaf91fb766c4debdf1bddb6a2575694c64df5dd554deb3f1"
+    }
+  },
+  "privacy_checks": {
+    "transfer_payable": false,
+    "transfer_calldata_has_amount": false,
+    "transfer_event_fields": [
+      "from",
+      "to"
+    ],
+    "transfer_event_leaks_amount": false
+  },
+  "tx_hashes": {
+    "wrap_flow": "ba540e54ceb68ab4985feaba3bae1c18951587b9886d1617195cf001e0ba1184",
+    "wrap_evm": "0xc563fe52a23f5e9f84ff7bbec8ff82f6bf341affb670fe6bd9eff5202a35b418",
+    "transfer_alice_to_charlie_flow": "b84fa3df84982703bcb7a9036f919ce40391c02d08fbf8a8533dd5f5115f011c",
+    "transfer_alice_to_charlie_evm": "0x9c705f73ee8fb8561a521326961c627d1ada7a775a872ec7d8deb41260b574bf",
+    "transfer_alice_to_bob_flow": "d18a98fc96467fd6b65eec4d385aa31cdedb4f69a09fbf425c2d81905883b8c3",
+    "transfer_alice_to_bob_evm": "0x294e1b9d7004181a37b6b35885d4cb89d4545f52420ee7893b707d8017d9d59d",
+    "unwrap_flow": "6ac4f3420701817ec596a1a244c1af6aa61945ea2e9915437b692b5249717b17",
+    "unwrap_evm": "0x6f4115ad5cf989faeaf91fb766c4debdf1bddb6a2575694c64df5dd554deb3f1"
+  },
+  "privacy_summary": {
+    "Q1_wrap_payable": true,
+    "Q1_transfer_payable": false,
+    "Q1_unwrap_payable": false,
+    "Q2_wrap_calldata_intent": "amount in msg.value (separate channel, intentional boundary leak)",
+    "Q2_transfer_calldata_has_amount": false,
+    "Q2_unwrap_calldata_has_amount": "true (intentional boundary leak — claimedAmount is first param)",
+    "Q3_balance_storage_returns_point_only": true,
+    "Q3_totalLocked_visible": true,
+    "Q4_Wrapped_amount": "5000000000000000000",
+    "Q4_Unwrapped_amount": "2000000000000000000",
+    "Q4_ConfidentialTransfer_amount_field": false,
+    "verdict": "PASS - amount HIDDEN at transfer (calldata, events, storage); VISIBLE only at wrap/unwrap boundaries (by design)"
+  },
+  "totalLocked_invariant_initial": "0",
+  "totalLocked_invariant_final": "3000000000000000000",
+  "totalLocked_invariant_expected_delta": "3000000000000000000"
+}
