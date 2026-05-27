@@ -1,0 +1,37 @@
+{
+  "startedAt": "2026-05-26T23:42:39.570Z",
+  "proxy": "0x025efe7e89acdb8F315C804BE7245F348AA9c538",
+  "charlie": {
+    "flow": "0x3c601a443c81e6cd",
+    "coa": "0x00000000000000000000000249065458581f9bf0"
+  },
+  "wrapFlowUnits": "2",
+  "steps": {
+    "before": {
+      "nonce": "0",
+      "lockedAttoFlow": "0",
+      "cadenceBalRaw": "10894982000",
+      "slotIdentity": true
+    },
+    "afterWrap": {
+      "lockedAttoFlow": "2000000000000000000",
+      "deltaAttoFlow": "2000000000000000000"
+    },
+    "afterUnwrap": {
+      "lockedAttoFlow": "0",
+      "slotReset": true,
+      "cadBalRaw": "10894558000",
+      "cadDeltaRaw": "-424000",
+      "cadDeltaFlow": -0.00424
+    }
+  },
+  "txHashes": {
+    "wrap": "975c27c6d1871cc86ec1613ea0a62162cd8b605b9a72c4b4da0da17c0f3af9bb",
+    "unwrap": "461d33d1582e25b1ccfb95485a66c0ac6c7c367b394cbb60047b24017a6e59e0"
+  },
+  "scale": "1000000000000000000",
+  "gate": "PROCEED",
+  "failures": 0,
+  "endedAt": "2026-05-26T23:44:35.674Z",
+  "verdict": "PASS"
+}
