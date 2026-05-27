@@ -7,7 +7,8 @@
   "chainId": 545,
   "contracts": {
     "JanusFlow_proxy": "0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078",
-    "JanusFlow_impl": "0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC",
+    "JanusFlow_impl": "0x708Fda3d53752fe195Eb43B7f7D6aae4a4C95B50",
+    "JanusFlow_impl_prior": "0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC",
     "AmountDiscloseVerifier": "0xD0ED3936530258C278f5357C1dB709ad34768352",
     "ConfidentialTransferVerifier": "0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B",
     "BabyJub": "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
@@ -57,7 +58,9 @@
     "amount_disclose_verifier_deploy": "710c893e9eb0d8cbadcda567ad1dcb0939387d668799b51f34ba749d4927e57e",
     "confidential_transfer_verifier_deploy": "2640c767613c2ef07319ac634bae208b207b59aa26b45c02c45494bbcec0020a",
     "janus_flow_impl_deploy": "e19e1d9c8876073a7a9bb957461eb53ad318b72c32536b1441a7ed18061a4f5e",
-    "janus_flow_proxy_deploy_with_init": "fa5d216f29fd85a2ea63b54f133b57f77d931ab79ccb354f954a352a7eab8f8b"
+    "janus_flow_proxy_deploy_with_init": "fa5d216f29fd85a2ea63b54f133b57f77d931ab79ccb354f954a352a7eab8f8b",
+    "janus_flow_impl_upgrade_to_admin_reset_flow": "2eaf418b621d711bb238b362d6d61d251c750513ae58c7c18de339b41c896b62",
+    "janus_flow_impl_upgrade_to_admin_reset_evm":  "0x5034fa35136f1b94c3b63a452310b5928b346b38df36d7e2464329cee076365d"
   },
   "owner": "0x0000000000000000000000022f6b30af48a94787",
   "deployer_flow_account": "0xbef3c77681c15397",

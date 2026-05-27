@@ -1,0 +1,33 @@
+{
+  "date": "2026-05-27",
+  "network": "flow-evm-testnet",
+  "chainId": 545,
+  "proxy": "0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078",
+  "prior_impl": "0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC",
+  "new_impl": "0x708Fda3d53752fe195Eb43B7f7D6aae4a4C95B50",
+  "upgrade_method": "ERC1967 UUPS upgradeToAndCall(newImpl, 0x)",
+  "chainid_guard": "block.chainid == 545 (Flow EVM testnet) — adminResetSlot reverts on any other chain",
+  "new_function": "adminResetSlot(address user) external onlyOwner",
+  "new_event": "AdminSlotReset(address indexed user, uint256 priorCommitmentX, uint256 priorCommitmentY)",
+  "privacy_warning": "PRIVACY-BREAKING — testnet-only commitment reset. AdminSlotReset event leaks prior commitment point. Homomorphic invariant (totalSupplyCommitment == sum(commitments)) is intentionally NOT preserved.",
+  "tx_hashes": {
+    "new_impl_deploy_flow": "08a08c519b59e34ae624c722ae0aaefdf137ab5c145c7b9027c035193b86b296",
+    "new_impl_deploy_evm":  "0xe21bcf999623abf17c798ff1398cff47676b2f9955bf1e482f1bce8330d62906",
+    "upgrade_call_flow":    "2eaf418b621d711bb238b362d6d61d251c750513ae58c7c18de339b41c896b62",
+    "upgrade_call_evm":     "0x5034fa35136f1b94c3b63a452310b5928b346b38df36d7e2464329cee076365d"
+  },
+  "verification": {
+    "method": "ERC1967 Upgraded(address) event from upgrade tx receipt (Flow EVM eth_getStorageAt does not expose the ERC1967 impl slot — returns 0x0 even when set, so the receipt event is the authoritative on-chain signal)",
+    "upgraded_event_topic": "0xbc7cd75a20ee27fd9adebab32041f755214dbc6bffa90cc0225b39da2e5c2d3b",
+    "upgraded_event_impl": "0x708fda3d53752fe195eb43b7f7d6aae4a4c95b50",
+    "matches_new_impl": true,
+    "proxy_owner_unchanged": "0x0000000000000000000000022f6b30af48a94787",
+    "admin_reset_selector_reachable_from_address_1": true,
+    "admin_reset_selector_revert_reason": "OwnableUnauthorizedAccount (expected — address(1) is not owner; confirms selector is now on proxy)"
+  },
+  "explorer": {
+    "proxy": "https://evm-testnet.flowscan.io/address/0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078",
+    "new_impl": "https://evm-testnet.flowscan.io/address/0x708Fda3d53752fe195Eb43B7f7D6aae4a4C95B50",
+    "upgrade_tx": "https://evm-testnet.flowscan.io/tx/0x5034fa35136f1b94c3b63a452310b5928b346b38df36d7e2464329cee076365d"
+  }
+}
