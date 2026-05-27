@@ -1,0 +1,44 @@
+{
+  "date": "2026-05-27T11:26:03.156Z",
+  "proxy": "0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e",
+  "underlying": "0x3e8973dE565743Ef9748779bE377BBE050A13C22",
+  "steps": {
+    "summary": {
+      "mint": "Alice minted 100 mUSDC",
+      "approve": "Alice approved proxy for 100 mUSDC",
+      "wrap": "Alice wrapped 100 mUSDC; totalLocked += 100M",
+      "xfer": "Alice shielded-transferred 30 mUSDC to Bob (HIDDEN)",
+      "unwrap": "Bob unwrapped 30 mUSDC; totalLocked -= 30M"
+    },
+    "final_state": {
+      "totalLocked": "70000000",
+      "alice_balance_tracked_offchain": "70000000 (70M residual)",
+      "bob_balance_tracked_offchain": "0 (fully unwrapped)",
+      "alice_usdc_balance": "0",
+      "bob_usdc_balance": "30000000"
+    }
+  },
+  "privacy_checks": {
+    "wrap_event_discloses_amount": true,
+    "approve_event_discloses_amount": true,
+    "shielded_transfer_no_cleartext_in_calldata": true,
+    "confidential_transfer_event_no_amount_field": true,
+    "shielded_transfer_does_not_touch_underlying": true,
+    "totalLocked_unchanged_on_shielded_transfer": true,
+    "unwrap_event_discloses_amount": true,
+    "pool_accounting_consistent": true
+  },
+  "tx_hashes": {
+    "mint_flow": "d5c4888f0389e94ab11ad37cf1f477ab86839603664f5fd2ac49d3c9a619c7a9",
+    "mint_evm": "0xb14a331093b5e7542ca4360c35f93b7bc873d4c7307efa06b8b1d321f20ac643",
+    "approve_flow": "5c470c78da8fbeaed99b98c59313a25066a0c434306252feb405c9a8f927c039",
+    "approve_evm": "0xcb0d0c644d7a0b9af59798d98fca0ae97acdcc33c2903c18716a8c8c934f607c",
+    "wrap_flow": "7402e199f77eeca6dcf9c7b005901903d369d86812bec1889e9098dbfdb2a075",
+    "wrap_evm": "0x6debaa8daa485cb1f0d3619c01fae69f7609170d715c7a0af846689506773005",
+    "xfer_flow": "db1cabc169e02061de936454a4e64dfbe8109e94fa29c4f19c81ddf9e665f085",
+    "xfer_evm": "0xd7bde09597d26277e6ebf6b35ffeb7d603ac73e27bdd19e6ac428a8125fda005",
+    "unwrap_flow": "1c9c41afac65c50cf48fa869ac1cc909f4158eb140a4deaa96ea00dd34fda1a4",
+    "unwrap_evm": "0xdd00d1f56e548235f5f60653a7f69090d084d23ef89d546d9c92bfe565ba1295"
+  },
+  "overall_pass": true
+}
