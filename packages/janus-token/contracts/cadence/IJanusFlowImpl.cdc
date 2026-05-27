@@ -4,61 +4,72 @@
 //
 // Design principles:
 //   - Impl contracts are STATELESS — pure logic only, no resources.
-//   - Router (JanusFlow) holds all custody and state.
-//   - Impl receives current state, validates inputs, returns new derived state.
-//   - Impl swap requires 48h time-lock so apps can react.
+//   - Router (JanusFlow) holds custody-mirroring totals and forwards verified
+//     calls to the EVM JanusFlow proxy via the user's COA.
+//   - All ZK proof verification (amount-disclose + confidential-transfer)
+//     happens on EVM. The Cadence impl only enforces structural / size
+//     invariants (proof packing shape, address shape, non-zero amount).
 //
 // In Cadence 1.0, contract interfaces cannot contain struct declarations.
-// Result types are therefore declared in the implementing contracts and the interface
-// methods use primitive return types (Strings for status, tuples via multiple return values
-// are not supported in Cadence, so we use a String-encoded result convention).
+// Methods return a String — "" means OK, anything else is an error message
+// that the router uses in an `assert` to abort the transaction.
 //
-// Deployed at: 5dcbeb41055ec57e (openjanus-janusflow-router account — new for v0.2.1)
+// API SHAPE (v0.3) — mirrors the new EVM JanusFlow proxy at
+// 0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078:
+//
+//   wrap(txCommit[2], amountProof[8])          — payable, amount = msg.value
+//   shieldedTransfer(to, publicInputs[6], proof[8])
+//   unwrap(claimedAmount, recipient,
+//          txCommit[2], amountProof[8],
+//          transferPublicInputs[6], transferProof[8])
+//
+// Deployed at: 5dcbeb41055ec57e (openjanus-janusflow-router account)
 
 access(all) contract interface IJanusFlowImpl {
 
     // ─── Interface Methods ───────────────────────────────────────────────────────
 
-    /// Validate a wrap operation and return derived new commitment state.
+    /// Validate a wrap operation.
     ///
-    /// Returns (newCommitment, errorMessage) where errorMessage is "" on success.
-    /// If errorMessage is non-empty, the operation must be aborted.
+    /// Returns "" on success, error message on failure.
     ///
-    /// @param amountAttoFlow         Amount being wrapped (in attoFLOW)
-    /// @param ciphertext             Accumulated ElGamal ciphertext (128 bytes)
-    /// @param recipient              Recipient's Flow address
-    /// @param hasExistingCommitment  Whether recipient already has a commitment slot
+    /// @param amountAttoFlow  Amount being wrapped (in attoFLOW)
+    /// @param txCommit        Pedersen commitment to the wrapped amount
+    ///                        (2 × 32-byte BabyJubJub field elements: Cx, Cy)
+    /// @param amountProof     Packed Groth16 amount-disclose proof (8 × 32 bytes)
     access(all) view fun validateWrap(
         amountAttoFlow: UInt256,
-        ciphertext: [UInt8],
-        recipient: Address,
-        hasExistingCommitment: Bool
+        txCommit: [UInt256],
+        amountProof: [UInt256]
     ): String
 
-    /// Validate a confidential transfer operation.
+    /// Validate a shielded transfer.
     ///
-    /// Returns errorMessage ("" = success).
+    /// Returns "" on success, error message on failure.
     ///
-    /// @param hasSenderCommitment     Whether sender has a commitment
-    /// @param transferAttoFlow        Amount to transfer
-    /// @param recipientCiphertext     Recipient's new accumulated ciphertext (128 bytes)
-    /// @param newSenderCiphertext     Sender's new commitment after transfer (128 bytes)
-    access(all) view fun validateTransfer(
-        hasSenderCommitment: Bool,
-        transferAttoFlow: UInt256,
-        recipientCiphertext: [UInt8],
-        newSenderCiphertext: [UInt8]
+    /// @param publicInputs  Confidential-transfer public inputs (6 × 32 bytes):
+    ///                      [0..1] C_old, [2..3] C_tx, [4..5] C_new
+    /// @param proof         Packed Groth16 transfer proof (8 × 32 bytes)
+    access(all) view fun validateShieldedTransfer(
+        publicInputs: [UInt256],
+        proof: [UInt256]
     ): String
 
     /// Validate an unwrap operation.
     ///
-    /// Returns errorMessage ("" = success).
+    /// Returns "" on success, error message on failure.
     ///
-    /// @param hasCommitment         Whether caller has a commitment
-    /// @param claimedAmountAttoFlow Amount user claims to unwrap
+    /// @param claimedAmountAttoFlow  Amount being unwrapped (in attoFLOW)
+    /// @param txCommit               Pedersen commitment binding the amount
+    /// @param amountProof            Packed amount-disclose proof
+    /// @param transferPublicInputs   Confidential-transfer public inputs
+    /// @param transferProof          Packed confidential-transfer proof
     access(all) view fun validateUnwrap(
-        hasCommitment: Bool,
-        claimedAmountAttoFlow: UInt256
+        claimedAmountAttoFlow: UInt256,
+        txCommit: [UInt256],
+        amountProof: [UInt256],
+        transferPublicInputs: [UInt256],
+        transferProof: [UInt256]
     ): String
 
     /// Semantic version of this implementation
