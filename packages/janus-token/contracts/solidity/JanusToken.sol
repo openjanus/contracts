@@ -192,6 +192,14 @@ abstract contract JanusToken is
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     // -----------------------------------------------------------------------
+    // !!! TESTNET-ONLY — REMOVE BEFORE MAINNET !!!
+    //
+    // See MAINNET-PREPARE-CHECKLIST.md (entry 1) in the package root.
+    // The chainid guard below makes this inert on any chain != 545, but a
+    // mainnet build MUST delete the function entirely (or replace with a
+    // time-locked + governance-gated variant) to avoid shipping a
+    // privacy-breaking escape hatch.
+    //
     // adminResetSlot — TESTNET-ONLY commitment recovery
     // -----------------------------------------------------------------------
     //
