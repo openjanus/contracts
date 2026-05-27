@@ -146,6 +146,16 @@ abstract contract JanusToken is
     /// transfer event.
     event ConfidentialTransfer(address indexed from, address indexed to);
 
+    /// TESTNET-ONLY: emitted when `adminResetSlot` wipes a user's per-account
+    /// commitment back to the identity point. PRIVACY-BREAKING side effect:
+    /// observers learn that `user` had a stuck/abandoned slot AND that any
+    /// future commitment they publish is fresh (no homomorphic baggage).
+    event AdminSlotReset(
+        address indexed user,
+        uint256 priorCommitmentX,
+        uint256 priorCommitmentY
+    );
+
     // -----------------------------------------------------------------------
     // Initializer
     // -----------------------------------------------------------------------
@@ -180,6 +190,62 @@ abstract contract JanusToken is
 
     /// @dev UUPS upgrade authorization — owner only.
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    // -----------------------------------------------------------------------
+    // adminResetSlot — TESTNET-ONLY commitment recovery
+    // -----------------------------------------------------------------------
+    //
+    // TESTNET-ONLY function for recovering slots that have become unusable
+    // because a client wrote a commitment without retaining the corresponding
+    // blinding factor (so the next `shieldedTransfer` proof can never match
+    // the on-chain `C_old`).
+    //
+    // WARNING — PRIVACY-BREAKING. This function:
+    //   * lets the contract owner zero out ANY user's per-account commitment;
+    //   * leaks (via the AdminSlotReset event) the prior commitment point;
+    //   * intentionally does NOT touch totalSupplyCommitment, so the homomorphic
+    //     invariant `totalSupplyCommitment == sum(commitments[a])` is BROKEN
+    //     after a reset. The shielded pool's audit trail no longer balances.
+    //
+    // The chainid guard hardcodes Flow EVM testnet (chainId 545) and reverts on
+    // any other chain. Removing or weakening that check before mainnet
+    // deployment would silently hand the owner an arbitrary commitment-wipe
+    // capability.
+
+    /// Flow EVM testnet chain id (https://developers.flow.com/evm/networks).
+    uint256 private constant FLOW_EVM_TESTNET_CHAIN_ID = 545;
+
+    /// @notice TESTNET-ONLY: reset `user`'s commitment slot to the identity
+    /// point so they can wrap fresh with a brand-new blinding chain.
+    /// @dev PRIVACY-BREAKING — must never be deployable on mainnet. The
+    /// `require(block.chainid == 545)` guard reverts every call on any chain
+    /// other than Flow EVM testnet (chainId 545), so even if this impl is
+    /// accidentally pointed at mainnet via a proxy upgrade, the function is
+    /// inert. The owner check is enforced by `onlyOwner`.
+    ///
+    /// Side effects:
+    ///   * `commitments[user]` is overwritten with identity (0, 1).
+    ///   * `totalSupplyCommitment` is INTENTIONALLY NOT updated — the protocol
+    ///     invariant is broken on purpose; this is a recovery-only escape
+    ///     hatch, not a normal-path operation.
+    ///   * `totalLocked` is INTENTIONALLY NOT updated — the underlying asset
+    ///     custody is independent of per-account commitments.
+    function adminResetSlot(address user) external onlyOwner {
+        require(
+            block.chainid == FLOW_EVM_TESTNET_CHAIN_ID,
+            "JanusToken: adminResetSlot is testnet-only (chainId 545)"
+        );
+        require(user != address(0), "JanusToken: zero user");
+
+        Point storage slot = commitments[user];
+        uint256 priorX = slot.x;
+        uint256 priorY = slot.y;
+
+        slot.x = 0;
+        slot.y = 1;
+
+        emit AdminSlotReset(user, priorX, priorY);
+    }
 
     // -----------------------------------------------------------------------
     // View helpers
