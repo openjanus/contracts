@@ -1,0 +1,20 @@
+{
+  "name": "@openjanus/janus-erc20",
+  "version": "0.4.0",
+  "description": "JanusERC20 — confidential-amount wrapper for an ERC20 underlying on Flow EVM (UUPS-upgradeable, extends JanusToken abstract base).",
+  "type": "module",
+  "scripts": {
+    "compile": "hardhat compile --config hardhat.config.cjs",
+    "deploy": "node --experimental-vm-modules scripts/deploy-janus-erc20.mjs",
+    "smoke": "node --experimental-vm-modules scripts/smoke-janus-erc20.mjs"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0"
+  },
+  "dependencies": {
+    "circomlibjs": "^0.1.7",
+    "snarkjs": "^0.7.6",
+    "ethers": "^6.13.4"
+  }
+}
