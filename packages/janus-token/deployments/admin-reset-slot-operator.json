@@ -1,0 +1,49 @@
+{
+  "date": "2026-05-27",
+  "purpose": "Recover operator's stuck shielded slot on the JanusFlow EVM proxy.",
+  "context": "Overnight smoke tests pre-loaded a commitment under the operator's COA, but the corresponding blinding factor was lost, so the next shieldedTransfer's C_old check could never match the stored commitment. The slot was unusable until adminResetSlot wiped it.",
+  "operator": {
+    "flow_cadence_address": "0x7599043aea001283",
+    "flow_account_alias": "testnet-claucondor",
+    "evm_coa_address": "0xb7557ee5d4a32d06",
+    "note": "The original brief used 0xc65395858a38d8ff, which is a MAINNET address and is rejected by the Flow testnet REST API ('address c65395858a38d8ff is invalid for chain flow-testnet'). The actual stuck operator on testnet is testnet-claucondor 0x7599043aea001283, whose COA 0xb7557ee5d4a32d06 carried the non-identity Pedersen point before this reset."
+  },
+  "network": "flow-evm-testnet + flow-cadence-testnet",
+  "chainId": 545,
+  "evm_proxy": "0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078",
+  "cadence_router": "0x5dcbeb41055ec57e",
+  "before": {
+    "commitment_x": "10178079555332102823662576479457907701541502127390874345394542018171002003987",
+    "commitment_y": "21501725530195038204056721103911919220191464693254173933958174590929127095053",
+    "is_identity": false
+  },
+  "after": {
+    "commitment_x": "0",
+    "commitment_y": "1",
+    "is_identity": true
+  },
+  "transaction": {
+    "flow_tx_hash": "2e3a7d49786d5b075b09ae4e451a58cbe5961887e8d6cf1db95a5f87ac481bd0",
+    "evm_tx_hash":  "0x72b9a240af667a28e92ba0bd7e372e85f4dd0ca505f24c0967a1081bc0f5e4d6",
+    "evm_status": "success",
+    "signer": "openjanus-flow (0xbef3c77681c15397)",
+    "signer_coa": "0x0000000000000000000000022f6b30af48a94787 (EVM proxy owner)",
+    "cadence_script": "transactions/admin_reset_slot.cdc",
+    "command": "flow transactions send transactions/admin_reset_slot.cdc 0x7599043aea001283 --signer openjanus-flow --network testnet --gas-limit 9999",
+    "evm_explorer": "https://evm-testnet.flowscan.io/tx/0x72b9a240af667a28e92ba0bd7e372e85f4dd0ca505f24c0967a1081bc0f5e4d6",
+    "flow_explorer": "https://testnet.flowscan.io/tx/2e3a7d49786d5b075b09ae4e451a58cbe5961887e8d6cf1db95a5f87ac481bd0"
+  },
+  "events": {
+    "cadence_AdminSlotReset": {
+      "type": "A.5dcbeb41055ec57e.JanusFlow.AdminSlotReset",
+      "target": "0x7599043aea001283",
+      "targetEVMHex": "000000000000000000000002b7557ee5d4a32d06"
+    },
+    "evm_AdminSlotReset": {
+      "topic0_keccak": "0xd313d655d67789a09039f91d12130c12be95488eab425793af43b6b09ee9f1f1",
+      "topic0_signature": "AdminSlotReset(address,uint256,uint256)",
+      "indexed_user": "0xb7557ee5d4a32d06"
+    }
+  },
+  "signal": "Operator can now wrap fresh FLOW on testnet-claucondor without rotating wallet — slot is identity (0, 1) so any new commitment will be the first link of a brand-new blinding chain."
+}
