@@ -1,0 +1,22 @@
+{
+  "version": "0.5.3",
+  "date": "2026-05-30T18:52:18.460Z",
+  "network": "flow-evm-testnet",
+  "chainId": 545,
+  "impl_address": "0xd6584cb2788D2eA5c3AB61fb72aa9fEaC27ae79D",
+  "deploy_tx_flow": "f04f3aff7b2fdb688a601deda7cc22245bd8e59ec1cae12fb3e025349537d0c8",
+  "deploy_tx_evm": "0xc95b84ced801c7a73be99dc128f27f714270fdc08f7d9e6ec380651975537929",
+  "status": "deployed_and_upgraded",
+  "upgrade_tx_flow": "b574d08ca0934927bd06bc13ba20d24550ee00ddc3b18f255944b30454980214",
+  "upgrade_tx_evm": "0xcbe8585751aea4a74f28e53d21277286e91e8ab6ecfd818fd33403137cd14368",
+  "proxy": "0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078",
+  "verification": {
+    "erc1967_upgrade_event_matches_impl": true,
+    "proxy_version": "0.5.3",
+    "firstSnapshotBlock_fresh_zero": true
+  },
+  "explorer": {
+    "proxy": "https://evm-testnet.flowscan.io/address/0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078",
+    "impl": "https://evm-testnet.flowscan.io/address/0xd6584cb2788D2eA5c3AB61fb72aa9fEaC27ae79D"
+  }
+}
