@@ -7,10 +7,10 @@
   "chainId": 545,
   "contracts": {
     "JanusFlow_proxy": "0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078",
-    "JanusFlow_impl": "0x708Fda3d53752fe195Eb43B7f7D6aae4a4C95B50",
+    "JanusFlow_impl": "0x9b454866100f985C28718Fe7d04Eedfa740e1c00",
     "JanusFlow_impl_prior": "0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC",
-    "AmountDiscloseVerifier": "0xD0ED3936530258C278f5357C1dB709ad34768352",
-    "ConfidentialTransferVerifier": "0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B",
+    "AmountDiscloseVerifier": "0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4",
+    "ConfidentialTransferVerifier": "0x48f791D2a4992F448Cc36F12e5500b6553e969b3",
     "BabyJub": "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
   },
   "cadence_contracts": {
@@ -27,8 +27,8 @@
     "update_method": "flow accounts update-contract (Cadence 1.0 source update; storage preserved)",
     "update_tx_hashes": {
       "IJanusFlowImpl": "62607a2d6e6863f076f7ef66dfa10b683d7dbcbbf645d07614b05dac67d18d71",
-      "JanusFlowImpl":  "fc9dbd07e5d6d15f44cdb2af517393489f19d73560a87ff81320befd4db7a896",
-      "JanusFlow":      "e01c9123e2b87455bae667aa1479186cb4dc44f9d00c2a65f5f2a73b23183485"
+      "JanusFlowImpl": "fc9dbd07e5d6d15f44cdb2af517393489f19d73560a87ff81320befd4db7a896",
+      "JanusFlow": "e01c9123e2b87455bae667aa1479186cb4dc44f9d00c2a65f5f2a73b23183485"
     },
     "deprecated_storage_fields": [
       "JanusFlow.commitments  — ElGamal-accumulator commits from v0.2.1; never written in v0.3",
@@ -60,7 +60,7 @@
     "janus_flow_impl_deploy": "e19e1d9c8876073a7a9bb957461eb53ad318b72c32536b1441a7ed18061a4f5e",
     "janus_flow_proxy_deploy_with_init": "fa5d216f29fd85a2ea63b54f133b57f77d931ab79ccb354f954a352a7eab8f8b",
     "janus_flow_impl_upgrade_to_admin_reset_flow": "2eaf418b621d711bb238b362d6d61d251c750513ae58c7c18de339b41c896b62",
-    "janus_flow_impl_upgrade_to_admin_reset_evm":  "0x5034fa35136f1b94c3b63a452310b5928b346b38df36d7e2464329cee076365d"
+    "janus_flow_impl_upgrade_to_admin_reset_evm": "0x5034fa35136f1b94c3b63a452310b5928b346b38df36d7e2464329cee076365d"
   },
   "owner": "0x0000000000000000000000022f6b30af48a94787",
   "deployer_flow_account": "0xbef3c77681c15397",
@@ -88,30 +88,42 @@
     "results_file": "deployments/cross-vm-smoke-results.json",
     "script": "scripts/v03-cross-vm-smoke.mjs",
     "actors": {
-      "dave": { "flow": "0xd32d9100e1fe983b", "coa_evm": "0x7b94cfc8a64971cd", "role": "wrap + sender" },
-      "eve":  { "flow": "0x374a28ddf00498e4", "coa_evm": "0xf99c41f078c6c238", "role": "shielded recipient + unwrapper" },
-      "bob":  { "flow": "0xd807a3992d7be612", "coa_evm": "0x50d93efba617e0bf", "role": "passive shielded recipient (pre-existing commitment from v03-smoke)" }
+      "dave": {
+        "flow": "0xd32d9100e1fe983b",
+        "coa_evm": "0x7b94cfc8a64971cd",
+        "role": "wrap + sender"
+      },
+      "eve": {
+        "flow": "0x374a28ddf00498e4",
+        "coa_evm": "0xf99c41f078c6c238",
+        "role": "shielded recipient + unwrapper"
+      },
+      "bob": {
+        "flow": "0xd807a3992d7be612",
+        "coa_evm": "0x50d93efba617e0bf",
+        "role": "passive shielded recipient (pre-existing commitment from v03-smoke)"
+      }
     },
     "steps": {
       "1_dave_wrap_3_FLOW": {
         "flow_tx": "3566d2b32defc41abac1f1ac881de6ab45d26687ffae630086038aba777865f8",
-        "evm_tx":  "0x9173027523c1cf504777ba63d33965c1ed7faa23f35d7c1b980dc8780607a3fa",
+        "evm_tx": "0x9173027523c1cf504777ba63d33965c1ed7faa23f35d7c1b980dc8780607a3fa",
         "evm_wrapped_amount_atto": "3000000000000000000"
       },
       "2_dave_shieldedTransfer_1_FLOW_to_eve": {
         "flow_tx": "fb297869b853ac0cfbfc501bbc12c4194d7570f275791c44fa597ba489f0e02b",
-        "evm_tx":  "0x30f3fccbb2d6322161d4226227965adfa46482dfcc7ab0d922893bb331c9659e",
+        "evm_tx": "0x30f3fccbb2d6322161d4226227965adfa46482dfcc7ab0d922893bb331c9659e",
         "amount_hidden_on_calldata": true,
-        "amount_hidden_on_event":    true
+        "amount_hidden_on_event": true
       },
       "3_dave_shieldedTransfer_0_5_FLOW_to_bob": {
         "flow_tx": "981176eca8c3c682161bc89a4c7459ada7214123015b2a8c396f78138423b97c",
-        "evm_tx":  "0x212745ff1c83de8ae0fd10fa3fbf568f25f5d92c5dcdc28043975c444a9af9dc",
+        "evm_tx": "0x212745ff1c83de8ae0fd10fa3fbf568f25f5d92c5dcdc28043975c444a9af9dc",
         "amount_hidden_on_calldata": true
       },
       "4_eve_unwrap_1_FLOW_to_eve_COA": {
         "flow_tx": "b00dae2f56ae401e89fc904095f45a7978c28a19b5b026ded087dd5126fa2e68",
-        "evm_tx":  "0x7396645ea8c631cbf81ee7ab03f737291d01cc3941aa1ee5550f7661f985769c",
+        "evm_tx": "0x7396645ea8c631cbf81ee7ab03f737291d01cc3941aa1ee5550f7661f985769c",
         "evm_unwrapped_amount_atto": "1000000000000000000",
         "eve_coa_balance_delta_atto": "1000000000000000000"
       }
@@ -122,24 +134,27 @@
       "cadence_unwrap_to_evm_unwrap_to_coa_receive_atomic": true
     },
     "privacy_assertions": {
-      "evm_Wrapped_event_amount_visible_by_design":            true,
-      "shieldedTransfer_calldata_hides_amount":                true,
-      "shieldedTransfer_event_fields":                         ["from", "to"],
-      "shieldedTransfer_event_hides_amount":                   true,
-      "totalLocked_unchanged_on_shieldedTransfer":             true,
-      "evm_Unwrapped_event_amount_visible_by_design":          true
+      "evm_Wrapped_event_amount_visible_by_design": true,
+      "shieldedTransfer_calldata_hides_amount": true,
+      "shieldedTransfer_event_fields": [
+        "from",
+        "to"
+      ],
+      "shieldedTransfer_event_hides_amount": true,
+      "totalLocked_unchanged_on_shieldedTransfer": true,
+      "evm_Unwrapped_event_amount_visible_by_design": true
     },
     "totalLocked_invariant": {
-      "evm_pool_initial_atto":  "3000000000000000000",
-      "evm_pool_final_atto":    "5000000000000000000",
-      "evm_delta_atto":         "2000000000000000000",
-      "expected_delta_atto":    "2000000000000000000",
-      "wrap_minus_unwrap":      "3 - 1 = 2 FLOW",
+      "evm_pool_initial_atto": "3000000000000000000",
+      "evm_pool_final_atto": "5000000000000000000",
+      "evm_delta_atto": "2000000000000000000",
+      "expected_delta_atto": "2000000000000000000",
+      "wrap_minus_unwrap": "3 - 1 = 2 FLOW",
       "cadence_router_mirror_FLOW": "2.00000000",
       "per_actor_pedersen_balances_atto": {
         "dave_remaining_after_wrap_and_two_transfers": "1500000000000000000",
-        "eve_remaining_after_one_in_one_unwrap":       "0",
-        "bob_remaining_visible_to_this_script":        "500000000000000000"
+        "eve_remaining_after_one_in_one_unwrap": "0",
+        "bob_remaining_visible_to_this_script": "500000000000000000"
       }
     },
     "verdict": "PASS — Cadence JanusFlow router atomically composes with EVM JanusFlow proxy on testnet; shielded amount hidden on calldata and ConfidentialTransfer event; native FLOW released to recipient COA on unwrap. The same-Flow-tx semantics give true cross-VM atomicity."

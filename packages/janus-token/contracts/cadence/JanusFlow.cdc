@@ -29,6 +29,14 @@
 //   migration on testnet — Cadence allows removing fields, but we keep them
 //   so old read scripts don't fail (`hasCommitment`, `getCommitment` etc.).
 //
+// v0.5.2 additions (additive — no new contract-level fields):
+//   MemoKey Resource type + MemoKeyPublic interface — generic BabyJub pubkey
+//   store. Apps that use JanusFlow privacy (PrivateTip, SealedBidNFT, etc.)
+//   import this type instead of each app defining its own. The resource lives
+//   at /storage/openjanusMemoKey and pubkey at /public/openjanusMemoKey.
+//   createMemoKey(pubkeyX, pubkeyY) factory — pubkey only, NO privkey.
+//   MemoKeyPublished event + getMemoPubkey(owner) view.
+//
 // Admin model: capability-based AdminResource in deployer storage.
 //
 // Deployed at: 5dcbeb41055ec57e (openjanus-janusflow-router account)
@@ -134,6 +142,84 @@ access(all) contract JanusFlow {
         target: Address,
         targetEVMHex: String
     )
+
+    /// v0.5.2 — Emitted when a user publishes (or rotates) their memo pubkey.
+    /// Indexers can use this to build an address → pubkey lookup without an
+    /// on-chain mapping (the authoritative pubkey is in the EVM memoKeyPubX/Y
+    /// mapping; this event is the Cadence-side mirror for Cadence-only indexers).
+    access(all) event MemoKeyPublished(
+        owner: Address,
+        pubkeyX: UInt256,
+        pubkeyY: UInt256
+    )
+
+    // ─── MemoKey Resource (v0.5.2) ───────────────────────────────────────────────
+    //
+    // Generic BabyJub pubkey store. ANY JanusFlow privacy app (PrivateTip,
+    // SealedBidNFT, HiddenPackOpening, etc.) uses this type — NOT an app-specific
+    // resource. Apps import JanusFlow to get MemoKey rather than each defining
+    // their own keypair store.
+    //
+    // Storage layout (per user):
+    //   /storage/openjanusMemoKey  — &MemoKey (private; owner borrows)
+    //   /public/openjanusMemoKey   — &{MemoKeyPublic} (read-only pubkey for senders)
+    //
+    // Privacy principle: the privkey is NEVER passed to chain and NEVER stored.
+    // Derivation is entirely client-side (sign-derive pattern: HKDF(wallet
+    // signature) → BabyJub scalar). Only (pubkeyX, pubkeyY) go on-chain.
+
+    /// Read-only interface for the public capability. Senders borrow this to
+    /// encrypt ShieldedNotes or snapshot blobs to the recipient.
+    access(all) resource interface MemoKeyPublic {
+        access(all) view fun getPubkeyX(): UInt256
+        access(all) view fun getPubkeyY(): UInt256
+    }
+
+    /// BabyJub pubkey store. Owns the pubkey; privkey stays off-chain forever.
+    access(all) resource MemoKey: MemoKeyPublic {
+        access(self) let pubkeyX: UInt256
+        access(self) let pubkeyY: UInt256
+
+        init(pubkeyX: UInt256, pubkeyY: UInt256) {
+            self.pubkeyX = pubkeyX
+            self.pubkeyY = pubkeyY
+        }
+
+        /// Public — anyone with the public capability can read the pubkey.
+        access(all) view fun getPubkeyX(): UInt256 { return self.pubkeyX }
+        access(all) view fun getPubkeyY(): UInt256 { return self.pubkeyY }
+    }
+
+    /// v0.5.2 MemoKey storage path (canonical — all JanusFlow apps use this).
+    access(all) view fun memoKeyStoragePath(): StoragePath {
+        return /storage/openjanusMemoKey
+    }
+
+    /// v0.5.2 MemoKey public capability path (canonical).
+    access(all) view fun memoKeyPublicPath(): PublicPath {
+        return /public/openjanusMemoKey
+    }
+
+    /// Factory: mint a fresh MemoKey resource (pubkey only — privkey never here).
+    /// The caller is responsible for saving it to memoKeyStoragePath() and
+    /// publishing the capability at memoKeyPublicPath().
+    /// Use setup_memo_key.cdc transaction for the full atomic Cadence+EVM setup.
+    access(all) fun createMemoKey(
+        pubkeyX: UInt256,
+        pubkeyY: UInt256
+    ): @MemoKey {
+        return <- create MemoKey(pubkeyX: pubkeyX, pubkeyY: pubkeyY)
+    }
+
+    /// View function: read another account's published memo pubkey.
+    /// Returns nil if no MemoKey capability is published at the canonical path.
+    access(all) fun getMemoPubkey(owner: Address): {String: UInt256}? {
+        let acct = getAccount(owner)
+        if let cap = acct.capabilities.borrow<&{MemoKeyPublic}>(self.memoKeyPublicPath()) {
+            return {"x": cap.getPubkeyX(), "y": cap.getPubkeyY()}
+        }
+        return nil
+    }
 
     // ─── Public User Functions ────────────────────────────────────────────────────
 
